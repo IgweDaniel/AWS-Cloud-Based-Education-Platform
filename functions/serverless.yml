@@ -1,0 +1,46 @@
+service: cloud-learning-platform
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - chime:CreateMeeting
+        - chime:CreateAttendee
+        - chime:GetMeeting
+        - chime:DeleteMeeting
+        - chime:DeleteAttendee
+        - chime:ListAttendees
+        - chime:ListMeetings
+        - chime:GetAttendee
+      Resource: "*"
+
+functions:
+  createMeeting:
+    handler: handler.createMeeting
+    events:
+      - http:
+          path: create-meeting
+          method: post
+          cors: true
+
+  joinMeeting:
+    handler: handler.joinMeeting
+    events:
+      - http:
+          path: join-meeting
+          method: post
+          cors: true
+
+  deleteMeeting:
+    handler: handler.deleteMeeting
+    events:
+      - http:
+          path: delete-meeting
+          method: post
+          cors: true
+
+plugins:
+  - serverless-offline

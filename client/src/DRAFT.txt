@@ -1,0 +1,284 @@
+const {
+  ChimeSDKMeetingsClient,
+  CreateMeetingCommand,
+  CreateAttendeeCommand,
+} = require("@aws-sdk/client-chime-sdk-meetings");
+const { DynamoDBClient, PutItemCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
+const { marshall, unmarshall } = require("@aws-sdk/util-dynamodb");
+
+const region = "us-east-1"; // Ensure this matches the region where the meeting was created
+const chimeClient = new ChimeSDKMeetingsClient({ region });
+const dynamoDbClient = new DynamoDBClient({ region });
+
+const MEETING_TABLE = "MeetingsTable"; // DynamoDB table name for meetings
+const ATTENDEE_TABLE = "AttendeesTable"; // DynamoDB table name for attendees
+
+module.exports.createMeeting = async (event) => {
+  try {
+    // Check if a meeting already exists
+    const getMeetingCommand = new GetItemCommand({
+      TableName: MEETING_TABLE,
+      Key: marshall({ MeetingId: "default-meeting" }), // Use a fixed key for simplicity
+    });
+
+    const existingMeeting = await dynamoDbClient.send(getMeetingCommand);
+
+    let meeting;
+    if (existingMeeting.Item) {
+      // Reuse existing meeting
+      meeting = unmarshall(existingMeeting.Item);
+    } else {
+      // Create a new meeting
+      const createMeetingCommand = new CreateMeetingCommand({
+        ClientRequestToken: "unique-token-" + Math.random().toString(36).substring(7),
+        MediaRegion: "us-east-1",
+      });
+
+      meeting = await chimeClient.send(createMeetingCommand);
+
+      // Store the meeting in DynamoDB
+      const putMeetingCommand = new PutItemCommand({
+        TableName: MEETING_TABLE,
+        Item: marshall({
+          MeetingId: "default-meeting", // Use a fixed key for simplicity
+          ...meeting.Meeting,
+        }),
+      });
+
+      await dynamoDbClient.send(putMeetingCommand);
+    }
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": true,
+      },
+      body: JSON.stringify({
+        meeting,
+      }),
+    };
+  } catch (error) {
+    console.error("Error creating meeting:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Failed to create meeting" }),
+    };
+  }
+};
+
+module.exports.joinMeeting = async (event) => {
+  try {
+    const { meetingId, userId } = JSON.parse(event.body);
+
+    if (!meetingId || !userId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "MeetingId and UserId are required" }),
+      };
+    }
+
+    // Check if the attendee already exists
+    const getAttendeeCommand = new GetItemCommand({
+      TableName: ATTENDEE_TABLE,
+      Key: marshall({ UserId: userId }),
+    });
+
+    const existingAttendee = await dynamoDbClient.send(getAttendeeCommand);
+
+    let attendee;
+    if (existingAttendee.Item) {
+      // Reuse existing attendee
+      attendee = unmarshall(existingAttendee.Item);
+    } else {
+      // Create a new attendee
+      const createAttendeeCommand = new CreateAttendeeCommand({
+        MeetingId: meetingId,
+        ExternalUserId: userId,
+      });
+
+      attendee = await chimeClient.send(createAttendeeCommand);
+
+      // Store the attendee in DynamoDB
+      const putAttendeeCommand = new PutItemCommand({
+        TableName: ATTENDEE_TABLE,
+        Item: marshall({
+          UserId: userId,
+          ...attendee.Attendee,
+        }),
+      });
+
+      await dynamoDbClient.send(putAttendeeCommand);
+    }
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": true,
+      },
+      body: JSON.stringify({
+        attendee,
+      }),
+    };
+  } catch (error) {
+    console.error("Error joining meeting:", error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Failed to join meeting" }),
+    };
+  }
+};
+
+
+
+
+import { useState } from "react";
+import {
+  ConsoleLogger,
+  DefaultDeviceController,
+  DefaultMeetingSession,
+  LogLevel,
+  MeetingSessionConfiguration,
+} from "amazon-chime-sdk-js";
+import { DEFAULT_FRAME_RATE, DEFAULT_MAX_BANDWIDTH } from "./constants";
+
+const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
+const deviceController = new DefaultDeviceController(logger);
+const createEndpoint =
+  "https://8dhkivuce0.execute-api.us-east-1.amazonaws.com/dev/create-meeting";
+
+const App = () => {
+  const [meetingSession, setMeetingSession] = useState(null);
+
+  const [meetingID, setMeetingID] = useState(null);
+  const joinMeeting = async (meetingResponse, attendeeResponse) => {
+    // try {
+    // Step 1: Initialize the meeting session
+    const configuration = new MeetingSessionConfiguration(
+      meetingResponse.Meeting,
+      attendeeResponse.Attendee
+    );
+
+    const dimension = {
+      height: 352,
+      width: 288,
+      frameRate: DEFAULT_FRAME_RATE,
+      maxBandwidth: DEFAULT_MAX_BANDWIDTH,
+      orientation: "portrait",
+    };
+
+    const meetingSession = new DefaultMeetingSession(
+      configuration,
+      logger,
+      deviceController
+    );
+    // setMeetingSession(meetingSession);
+
+    // deviceController.chooseVideoInputQuality(
+    //   dimension.width,
+    //   dimension.height,
+    //   dimension.frameRate,
+    //   dimension.maxBandwidth
+    // );
+
+    // Debug: Log the meetingSession object
+    console.log("MeetingSession:", meetingSession);
+    console.log("MeetingSession: audioVideo", meetingSession.audioVideo);
+
+    // Step 2: Set up audio and video
+    const audioInputDevices =
+      await meetingSession.audioVideo?.listAudioInputDevices();
+    console.log("Audio Input Devices:", audioInputDevices);
+
+    const audioOutputDevices =
+      await meetingSession.audioVideo.listAudioOutputDevices();
+    if (audioInputDevices.length > 0) {
+      await meetingSession.audioVideo.startAudioInput(
+        audioInputDevices[0].deviceId
+      );
+    } else {
+      console.warn("No audio input devices found.");
+    }
+
+    if (audioOutputDevices.length > 0) {
+      await meetingSession.audioVideo?.chooseAudioOutput(
+        audioOutputDevices[0].deviceId
+      );
+    } else {
+      console.warn("No audio output devices found.");
+    }
+    const videoInputDevices =
+      await meetingSession.audioVideo?.listVideoInputDevices();
+    console.log("Video Input Devices:", videoInputDevices);
+
+    if (videoInputDevices.length > 0) {
+      console.log("Choosing video input device:", meetingSession.audioVideo);
+      console.dir(meetingSession.audioVideo);
+      await meetingSession.audioVideo.startVideoInput(
+        videoInputDevices[0].deviceId
+      );
+    } else {
+      console.warn("No video input devices found.");
+    }
+
+    const observer = {
+      // videoTileDidUpdate is called whenever a new tile is created or tileState changes.
+      videoTileDidUpdate: (tileState) => {
+        // Ignore a tile without attendee ID and other attendee's tile.
+        if (!tileState.boundAttendeeId || !tileState.localTile) {
+          console.log("na here oooooo");
+          return;
+        }
+        const videoElement = document.querySelector("#video-element");
+        meetingSession.audioVideo.bindVideoElement(
+          tileState.tileId,
+          videoElement
+        );
+      },
+    };
+    const audioElement = document.querySelector("#audio-element-id");
+    meetingSession.audioVideo.bindAudioElement(audioElement);
+    console.log("Audio Element:", audioElement);
+    // const videoElement = document.querySelector("#video-element");
+    // console.log("Video Element:", videoElement);
+    // meetingSession.audioVideo.bindVideoElement(videoElement);
+
+    // Step 3: Start the meeting session
+    meetingSession.audioVideo.addObserver(observer);
+    meetingSession.audioVideo.start();
+    meetingSession.audioVideo.startLocalVideoTile();
+
+    setMeetingSession(meetingSession);
+    // } catch (error) {
+    //   console.error("Error joining meeting:", error);
+    // }
+  };
+
+  const startMeeting = async () => {
+    try {
+      const response = await fetch(createEndpoint, {
+        method: "POST",
+      });
+      const data = await response.json();
+      setMeetingID(data.meeting.Meeting.MeetingId);
+      await joinMeeting(data.meeting, data.attendee);
+    } catch (error) {
+      console.error("Error starting meeting:", error);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Live Class {meetingID}</h1>
+      <button onClick={startMeeting}>Start Meeting</button>
+      <video
+        id="video-element"
+        style={{ width: "500px", height: "500px", border: "1px solid white" }}
+      ></video>
+      <audio id="audio-element-id" autoPlay></audio>
+    </div>
+  );
+};
+
+export default App;
