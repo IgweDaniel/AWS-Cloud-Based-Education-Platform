@@ -7,15 +7,7 @@ export default defineConfig({
   define: {
     global: "window", // Inject the global object
   },
+  server: {
+    allowedHosts:true, // Allow all hosts
+  },
 });
-
-// import { defineConfig } from "vite";
-// import react from "@vitejs/plugin-react";
-// import { global } from "global";
-
-// export default defineConfig({
-//   plugins: [react()],
-//   define: {
-//     global: "window", // Inject the global object
-//   },
-// });
