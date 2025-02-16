@@ -7,13 +7,48 @@ const {
   DeleteMeetingCommand,
 } = require("@aws-sdk/client-chime-sdk-meetings");
 
+const { CognitoJwtVerifier }  = require( "aws-jwt-verify");
+
+// Verifier that expects valid access tokens:
+const verifier = CognitoJwtVerifier.create({
+  userPoolId: process.env.USER_POOL_ID,
+  tokenUse: "access",
+  clientId: process.env.CLIENT_ID,
+});
+
+const authenticate = async (event) => {
+  try {
+    const token = event.headers.Authorization?.replace('Bearer ', '');
+    if (!token) {
+      throw new Error('No token provided');
+    }
+    return await verifier.verify(token);
+  } catch (err) {
+    console.error('Authentication error:', err);
+    throw new Error('Invalid token');
+  }
+};
+
 const region = "us-east-1";
 const chimeClient = new ChimeSDKMeetingsClient({
   region,
 });
 
+// TODO: bad reques handling
 module.exports.createMeeting = async (event) => {
   try {
+    const userData = await authenticate(event);
+    console.log({userData});
+    
+    const userId = userData.sub; 
+    // const { userId } = JSON.parse(event.body);
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "UserId is required" }),
+      };
+    }
     // Step 1: Create a new meeting
     const createMeetingCommand = new CreateMeetingCommand({
       ClientRequestToken:
@@ -29,8 +64,7 @@ module.exports.createMeeting = async (event) => {
     const createAttendeeCommand = new CreateAttendeeCommand({
       MeetingId: meeting.Meeting.MeetingId,
 
-      ExternalUserId:
-        "external-user-id-" + Math.random().toString(36).substring(7),
+      ExternalUserId: userId,
     });
 
     const attendee = await chimeClient.send(createAttendeeCommand);
@@ -49,15 +83,23 @@ module.exports.createMeeting = async (event) => {
   } catch (error) {
     console.error("Error creating meeting:", error);
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Failed to create meeting" }),
+      statusCode: error.message === 'Invalid token' ? 401 : 500,
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };
 
 module.exports.joinMeeting = async (event) => {
   try {
-    const { meetingId } = JSON.parse(event?.body ?? "{}");
+    const {
+      meetingId,
+      // userId = "external-user-id-" + Math.random().toString(36).substring(7),
+    } = JSON.parse(event?.body ?? "{}");
+
+    const userData = await authenticate(event);
+    console.log({userData});
+    
+    const userId = userData.sub; 
 
     if (!meetingId) {
       return {
@@ -72,8 +114,7 @@ module.exports.joinMeeting = async (event) => {
     // Step 1: Create an attendee for the existing meeting
     const createAttendeeCommand = new CreateAttendeeCommand({
       MeetingId: meetingId,
-      ExternalUserId:
-        "external-user-id-" + Math.random().toString(36).substring(7),
+      ExternalUserId: userId,
     });
 
     const attendee = await chimeClient.send(createAttendeeCommand);
@@ -93,8 +134,8 @@ module.exports.joinMeeting = async (event) => {
     //   TODO catch not found exception
     console.error("Error joining meeting:", error);
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Failed to join meeting" }),
+      statusCode: error.message === 'Invalid token' ? 401 : 500,
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };

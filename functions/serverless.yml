@@ -4,6 +4,9 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
+  environment:
+    USER_POOL_ID: ${param:USER_POOL_ID}
+    CLIENT_ID: ${param:CLIENT_ID}
   iamRoleStatements:
     - Effect: Allow
       Action:
