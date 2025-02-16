@@ -10,18 +10,39 @@ import {
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './views/Home';
 import Meet from './views/Meet';
+import awsconfig from "./aws-exports";
+import { Amplify } from "aws-amplify";
+import "@aws-amplify/ui-react/styles.css";
+import { Authenticator } from "@aws-amplify/ui-react";
+import { AuthProvider } from './context/auth';
+import PrivateRoute from './components/PrivateRoute';
+import Login from './components/Login';
+
+Amplify.configure(awsconfig);
 
 
 const App = () => {
 
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/meet/:meetingId" element={<Meet />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={
+            <PrivateRoute>
+              <Home />
+            </PrivateRoute>
+          } />
+          <Route path="/meet/:meetingId" element={
+            <PrivateRoute>
+              <Meet />
+            </PrivateRoute>
+          } />
+        </Routes>
+      </Router>
+      </AuthProvider>
+
   );
 };
 
