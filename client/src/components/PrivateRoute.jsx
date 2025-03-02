@@ -1,14 +1,23 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/auth';
+import { Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "../context/auth";
 
-const PrivateRoute = ({ children }) => {
+// eslint-disable-next-line react/prop-types
+const PrivateRoute = ({ allowedRoles = [] }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  return user ? children : <Navigate to="/login" />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Outlet />;
 };
 
 export default PrivateRoute;

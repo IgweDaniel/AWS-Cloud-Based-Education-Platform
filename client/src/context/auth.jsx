@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
+import { fetchUserAttributes, getCurrentUser } from "aws-amplify/auth";
 import { signOut } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
 const AuthContext = createContext({});
 
+// eslint-disable-next-line react/prop-types
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -11,39 +12,45 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     checkUser();
 
-    const hubListenerCancelToken = Hub.listen("auth", ({ payload }) => {
-      switch (payload.event) {
-        case "signedIn":
-          setLoading(false);
-          setUser(payload.data);
+    const hubListenerCancelToken = Hub.listen(
+      "auth",
+      ({ payload, ...rest }) => {
+        switch (payload.event) {
+          case "signedIn":
+            // checkUser();
+            console.log({ payload });
+            console.log({ rest });
 
-          console.log({ payload: payload });
+            setUser(payload.data);
+            console.log("user have been signedIn successfully.");
+            break;
+          case "signedOut":
+            setUser(null);
+            console.log("user have been signedOut successfully.");
+            break;
+          case "tokenRefresh":
+            console.log("auth tokens have been refreshed.");
+            break;
+          case "tokenRefresh_failure":
+            console.log("failure while refreshing auth tokens.");
+            break;
+          case "signInWithRedirect":
+            console.log(
+              "signInWithRedirect API has successfully been resolved."
+            );
+            break;
+          case "signInWithRedirect_failure":
+            console.log(
+              "failure while trying to resolve signInWithRedirect API."
+            );
+            break;
 
-          console.log("user have been signedIn successfully.");
-          break;
-        case "signedOut":
-          setUser(null);
-          console.log("user have been signedOut successfully.");
-          break;
-        case "tokenRefresh":
-          console.log("auth tokens have been refreshed.");
-          break;
-        case "tokenRefresh_failure":
-          console.log("failure while refreshing auth tokens.");
-          break;
-        case "signInWithRedirect":
-          console.log("signInWithRedirect API has successfully been resolved.");
-          break;
-        case "signInWithRedirect_failure":
-          console.log(
-            "failure while trying to resolve signInWithRedirect API."
-          );
-          break;
-        case "customOAuthState":
-          logger.info("custom state returned from CognitoHosted UI");
-          break;
+          case "customOAuthState":
+            console.log("custom state returned from CognitoHosted UI");
+            break;
+        }
       }
-    });
+    );
 
     return () => {
       hubListenerCancelToken();
@@ -53,10 +60,12 @@ export function AuthProvider({ children }) {
   async function checkUser() {
     try {
       const userData = await getCurrentUser();
-
-      setUser(userData);
+      const attributes = await fetchUserAttributes();
+      // console.log({ attributes });
+      setUser({ ...userData, role: attributes["custom:role"] });
     } catch (err) {
       setUser(null);
+      console.error(err);
     }
     setLoading(false);
   }
@@ -75,4 +84,5 @@ export function AuthProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

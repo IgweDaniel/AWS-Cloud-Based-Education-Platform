@@ -19,6 +19,28 @@ provider:
         - chime:ListMeetings
         - chime:GetAttendee
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:DeleteItem
+      Resource:
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Classes
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Enrollments
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings/index/*
+    - Effect: Allow
+      Action:
+        - cognito-idp:AdminCreateUser
+        - cognito-idp:AdminGetUser
+        - cognito-idp:AdminSetUserPassword
+        - cognito-idp:ListUsers
+        - cognito-idp:AdminUpdateUserAttributes
+      Resource:
+        - arn:aws:cognito-idp:eu-north-1:*:userpool/${self:provider.environment.USER_POOL_ID}
+        - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${self:provider.environment.USER_POOL_ID}
 
 functions:
   createMeeting:
@@ -42,6 +64,70 @@ functions:
     events:
       - http:
           path: delete-meeting
+          method: post
+          cors: true
+
+  assignRole:
+    handler: handler.assignRole
+    events:
+      - http:
+          path: users/role
+          method: post
+          cors: true
+
+  createClass:
+    handler: handler.createClass
+    events:
+      - http:
+          path: classes
+          method: post
+          cors: true
+
+  enrollStudent:
+    handler: handler.enrollStudent
+    events:
+      - http:
+          path: classes/{classId}/enroll
+          method: post
+          cors: true
+
+  getClasses:
+    handler: handler.getClasses
+    events:
+      - http:
+          path: classes
+          method: get
+          cors: true
+
+  getClassDetails:
+    handler: handler.getClassDetails
+    events:
+      - http:
+          path: classes/{classId}
+          method: get
+          cors: true
+
+  createUser:
+    handler: handler.createUser
+    events:
+      - http:
+          path: users
+          method: post
+          cors: true
+
+  listUsers:
+    handler: handler.listUsers
+    events:
+      - http:
+          path: users
+          method: get
+          cors: true
+
+  assignUserRole:
+    handler: handler.assignUserRole
+    events:
+      - http:
+          path: users/role
           method: post
           cors: true
 

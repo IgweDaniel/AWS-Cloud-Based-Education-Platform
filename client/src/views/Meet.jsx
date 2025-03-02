@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getUserId } from '../utils/userId';
+
+import { useAuth } from "../context/auth";
 
 import {
   ConsoleLogger,
@@ -17,11 +18,11 @@ import {
   FaVideoSlash,
 } from "react-icons/fa";
 import { FcEndCall } from "react-icons/fc";
+
 import { authenticatedFetch } from "../utils/fetch";
+
 const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
 const deviceController = new DefaultDeviceController(logger);
-const joinEndpoint =
-  "https://8dhkivuce0.execute-api.us-east-1.amazonaws.com/dev/join-meeting";
 
 const styles = {
   container: {
@@ -133,39 +134,72 @@ const styles = {
 };
 
 const Meet = () => {
-  const { meetingId } = useParams();
+  const { classId, meetingId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [meetingSession, setMeetingSession] = useState(null);
-  // const meetingSessionf(null);
   const [videoTiles, setVideoTiles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [error, setError] = useState(null);
   const videoGridRef = useRef(null);
   const localVideoRef = useRef(null);
-
-  // const [localAttendeeID, setLocalAttendeeID] = useState(null);
   const [localTileID, setLocalTileID] = useState(null);
 
-  // const [localTile, setLocalTile] = useState(null);
   useEffect(() => {
     if (!meetingSession) {
-      (async () => {
-        await joinMeetingHandler();
-      })();
+      joinMeetingHandler();
     }
     return () => {
       if (meetingSession) {
-        meetingSession.audioVideo.stop();
+        cleanupMeeting();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Function to join the meeting
-  const joinMeeting = async (meetingResponse, attendeeResponse) => {
-    logger.info("Joining meeting...");
+  const cleanupMeeting = async () => {
     try {
-      // Step 1: Initialize the meeting session
+      await Promise.all([
+        meetingSession?.audioVideo.stopAudioInput(),
+        meetingSession?.audioVideo.stopVideoInput(),
+      ]);
+      meetingSession?.audioVideo.unbindAudioElement();
+      meetingSession?.audioVideo.stop();
+      setMeetingSession(null);
+    } catch (error) {
+      console.error("Error cleaning up meeting:", error);
+    }
+  };
+
+  const joinMeetingHandler = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authenticatedFetch("/api/meetings/join", {
+        method: "POST",
+        body: JSON.stringify({
+          meetingId,
+          classId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to join meeting");
+      }
+
+      const data = await response.json();
+      await joinMeeting(data.meeting, data.attendee);
+    } catch (error) {
+      console.error("Error joining meeting:", error);
+      setError(error.message);
+      setIsLoading(false);
+    }
+  };
+
+  const joinMeeting = async (meetingResponse, attendeeResponse) => {
+    try {
       const configuration = new MeetingSessionConfiguration(
         meetingResponse.Meeting,
         attendeeResponse.Attendee
@@ -177,72 +211,48 @@ const Meet = () => {
         deviceController
       );
 
-      // Step 2: Set up audio and video
-      const audioInputDevices =
-        await meetingSession.audioVideo.listAudioInputDevices();
-      const audioOutputDevices =
-        await meetingSession.audioVideo.listAudioOutputDevices();
-      const videoInputDevices =
-        await meetingSession.audioVideo.listVideoInputDevices();
+      // Initialize devices
+      await initializeDevices(meetingSession);
 
-      if (audioInputDevices.length > 0) {
-        await meetingSession.audioVideo.startAudioInput(
-          audioInputDevices[0].deviceId
-        );
-      } else {
-        console.warn("No audio input devices found.");
-      }
-
-      if (audioOutputDevices.length > 0) {
-        await meetingSession.audioVideo.chooseAudioOutput(
-          audioOutputDevices[0].deviceId
-        );
-      } else {
-        console.warn("No audio output devices found.");
-      }
-
-      if (videoInputDevices.length > 0) {
-        await meetingSession.audioVideo.startVideoInput(
-          videoInputDevices[0].deviceId
-        );
-      } else {
-        console.warn("No video input devices found.");
-      }
-
-      // Step 4: Start the meeting session
+      // Start meeting
       meetingSession.audioVideo.start();
-      meetingSession.audioVideo.startLocalVideoTile(); // Start local video
-      // setIsLoading(false);
+      meetingSession.audioVideo.startLocalVideoTile();
+
+      // Set up video binding
       localVideoRef.current.addEventListener("loadeddata", () => {
-        // videoElement.style.display = "block";
         setIsLoading(false);
       });
 
       setMeetingSession(meetingSession);
     } catch (error) {
-      console.error("Error joining meeting:", error);
+      console.error("Error setting up meeting:", error);
+      setError("Failed to initialize meeting");
+      setIsLoading(false);
     }
   };
 
-  const joinMeetingHandler = async () => {
-    try {
-      setIsLoading(true);
-      const userId = getUserId();
-      const response = await authenticatedFetch(joinEndpoint, {
-        method: "POST",
-        body: JSON.stringify({ 
-          meetingId,
-          userId 
-        }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const data = await response.json();
-      await joinMeeting(data.meeting, data.attendee);
-    } catch (error) {
-      console.error("Error joining meeting:", error);
-      setIsLoading(false);
+  const initializeDevices = async (meetingSession) => {
+    const audioInputDevices =
+      await meetingSession.audioVideo.listAudioInputDevices();
+    const audioOutputDevices =
+      await meetingSession.audioVideo.listAudioOutputDevices();
+    const videoInputDevices =
+      await meetingSession.audioVideo.listVideoInputDevices();
+
+    if (audioInputDevices.length > 0) {
+      await meetingSession.audioVideo.startAudioInput(
+        audioInputDevices[0].deviceId
+      );
+    }
+    if (audioOutputDevices.length > 0) {
+      await meetingSession.audioVideo.chooseAudioOutput(
+        audioOutputDevices[0].deviceId
+      );
+    }
+    if (videoInputDevices.length > 0) {
+      await meetingSession.audioVideo.startVideoInput(
+        videoInputDevices[0].deviceId
+      );
     }
   };
 
@@ -387,17 +397,42 @@ const Meet = () => {
     // Cleanup function
   }, [videoTiles, meetingSession]);
 
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.error}>
+          <h2>Error</h2>
+          <p>{error}</p>
+          <button
+            onClick={() => navigate("/dashboard")}
+            style={styles.controlButton}
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => {
+            cleanupMeeting();
+            navigate("/dashboard");
+          }}
           style={styles.controlButton}
-          title="Home"
+          title="Return to Dashboard"
         >
-          Home
+          Back
         </button>
-        <div style={styles.meetingInfo}>Meeting ID: {meetingId}</div>
+        <div style={styles.meetingInfo}>
+          <div>Meeting ID: {meetingId}</div>
+          <div style={{ fontSize: "0.875em", opacity: 0.8 }}>
+            {user?.role === "TEACHER" ? "Teaching" : "Attending"} Class
+          </div>
+        </div>
       </div>
 
       <div ref={videoGridRef} style={styles.videoGrid}>
@@ -439,18 +474,7 @@ const Meet = () => {
         </button>
         <button
           onClick={async () => {
-          
-        
-            await Promise.all([
-              meetingSession?.audioVideo.stopAudioInput(),
-              meetingSession?.audioVideo.stopVideoInput()
-            ])
-            meetingSession?.audioVideo.unbindAudioElement();
-            meetingSession?.audioVideo.stop();
-            
-            console.log(meetingSession.audioVideo);
-            
-            setMeetingSession(null);
+            await cleanupMeeting();
             navigate("/");
           }}
           style={{ ...styles.controlButton, ...styles.danger }}

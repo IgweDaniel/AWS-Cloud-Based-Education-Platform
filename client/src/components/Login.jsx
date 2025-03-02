@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { signIn } from "aws-amplify/auth";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/auth";
-import { use } from "react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -22,8 +20,6 @@ const Login = () => {
       await signIn({
         username: email,
         password,
-        // username: "hello@mycompany.com",
-        // password: "hunter2",
       });
       console.log("naviagting to /");
 
