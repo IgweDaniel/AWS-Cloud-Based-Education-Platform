@@ -238,6 +238,9 @@ module.exports.joinMeeting = async (event) => {
 
     return successResponse({ meeting: chimeMeeting, attendee });
   } catch (error) {
+    if (error.name === "NotFoundException") {
+      return errorResponse("Meeting not found", 404);
+    }
     return errorResponse(error);
   }
 };
@@ -411,13 +414,30 @@ module.exports.getClasses = async (event) => {
         break;
     }
 
-    items = items.map((item) => ({
-      classId: item.classId.S,
-      className: item.className.S,
-      createdAt: item.createdAt.S,
-      teacherId: item.teacherId.S,
-      teacherName: item.teacherName.S,
-    }));
+    // Check for active meetings for each class
+    items = await Promise.all(
+      items.map(async (item) => {
+        const meetings = await dynamoDB.query({
+          TableName: "Meetings",
+          IndexName: "ClassIndex",
+          KeyConditionExpression: "classId = :classId",
+          ExpressionAttributeValues: {
+            ":classId": { S: item.classId.S },
+          },
+          ScanIndexForward: false,
+          Limit: 1,
+        });
+
+        return {
+          classId: item.classId.S,
+          className: item.className.S,
+          createdAt: item.createdAt.S,
+          teacherId: item.teacherId.S,
+          teacherName: item.teacherName.S,
+          activeMeetingId: meetings.Items[0]?.meetingId.S || null,
+        };
+      })
+    );
 
     return successResponse(items);
   } catch (error) {
@@ -607,6 +627,120 @@ module.exports.listUsers = async (event) => {
     }
 
     return successResponse(formattedUsers);
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
+module.exports.checkMeetingStatus = async (event) => {
+  try {
+    console.log("Checking meeting statuses...");
+
+    // Get all meetings from DynamoDB
+    const meetingsData = await dynamoDB.scan({
+      TableName: "Meetings",
+    });
+
+    const results = await Promise.all(
+      meetingsData.Items.map(async (item) => {
+        const meetingId = item.meetingId.S;
+        try {
+          // Check if meeting still exists in Chime
+          const getMeetingCommand = new GetMeetingCommand({
+            MeetingId: meetingId,
+          });
+
+          await chimeClient.send(getMeetingCommand);
+          return { meetingId, status: "active" };
+        } catch (error) {
+          if (error.name === "NotFoundException") {
+            // Meeting was automatically deleted by AWS Chime
+            console.log(
+              `Meeting ${meetingId} no longer exists in Chime, cleaning up DynamoDB`
+            );
+
+            // Delete from DynamoDB
+            await dynamoDB.deleteItem({
+              TableName: "Meetings",
+              Key: {
+                meetingId: { S: meetingId },
+              },
+            });
+
+            return {
+              meetingId,
+              status: "deleted",
+              reason: "auto-deleted by Chime",
+            };
+          }
+
+          return { meetingId, status: "error", error: error.message };
+        }
+      })
+    );
+
+    return successResponse({
+      message: "Meeting status check completed",
+      processed: results.length,
+      results,
+    });
+  } catch (error) {
+    console.error("Error checking meeting status:", error);
+    return errorResponse("Failed to check meeting status");
+  }
+};
+
+module.exports.getMeetingStatus = async (event) => {
+  try {
+    const { meetingId } = event.pathParameters;
+
+    // Check if meeting exists in DynamoDB
+    const meetingData = await dynamoDB.getItem({
+      TableName: "Meetings",
+      Key: {
+        meetingId: { S: meetingId },
+      },
+    });
+
+    if (!meetingData.Item) {
+      return successResponse({
+        active: false,
+        reason: "Meeting not found in database",
+      });
+    }
+
+    // Verify meeting exists in Chime
+    try {
+      const getMeetingCommand = new GetMeetingCommand({
+        MeetingId: meetingId,
+      });
+
+      await chimeClient.send(getMeetingCommand);
+
+      return successResponse({
+        active: true,
+        classId: meetingData.Item.classId.S,
+        createdAt: meetingData.Item.createdAt.S,
+      });
+    } catch (error) {
+      if (error.name === "NotFoundException") {
+        // Meeting was automatically deleted by Chime
+        // Clean up our database
+        await dynamoDB.deleteItem({
+          TableName: "Meetings",
+          Key: {
+            meetingId: { S: meetingId },
+          },
+        });
+
+        return successResponse({
+          active: false,
+          reason: "Meeting was automatically deleted by Chime",
+        });
+      }
+
+      throw error;
+    }
   } catch (error) {
     return errorResponse(error);
   }

@@ -148,6 +148,48 @@ const Meet = () => {
   const localVideoRef = useRef(null);
   const [localTileID, setLocalTileID] = useState(null);
 
+  const checkMeetingStatus = async (meetingId) => {
+    try {
+      const response = await authenticatedFetch(
+        `/meetings/${meetingId}/status`
+      );
+      const data = await response.json();
+
+      if (!data.active) {
+        // Meeting no longer exists
+        // Redirect user or show appropriate message
+        navigate("/dashboard", {
+          state: { message: "The meeting has ended" },
+        });
+      }
+
+      return data.active;
+    } catch (error) {
+      console.error("Error checking meeting status:", error);
+      return false;
+    }
+  };
+
+  // Use in component with useEffect
+  // FIXME: check if this is necce
+  // useEffect(() => {
+  //   let statusInterval;
+
+  //   if (meetingId) {
+  //     // Check status immediately
+  //     checkMeetingStatus(meetingId);
+
+  //     // Then check every minute
+  //     statusInterval = setInterval(() => {
+  //       checkMeetingStatus(meetingId);
+  //     }, 60000);
+  //   }
+
+  //   return () => {
+  //     if (statusInterval) clearInterval(statusInterval);
+  //   };
+  // }, [meetingId]);
+
   useEffect(() => {
     if (!meetingSession) {
       joinMeetingHandler();
@@ -187,6 +229,16 @@ const Meet = () => {
 
       if (!response.ok) {
         const error = await response.json();
+        if (error.statusCode === 404) {
+          // Meeting was deleted by Chime
+          //TODO: Show a user-friendly message
+          navigate("/dashboard", {
+            state: {
+              message: "This meeting has ended or is no longer available",
+            },
+          });
+          return;
+        }
         throw new Error(error.message || "Failed to join meeting");
       }
 

@@ -142,6 +142,10 @@ const Home = () => {
 
   return (
     <div style={styles.container}>
+      <div>
+        <p>LoginId: {user?.signInDetails.loginId}</p>
+        <p>Role: {user?.role}</p>
+      </div>
       <button
         onClick={async () => {
           console.log("loggging out");

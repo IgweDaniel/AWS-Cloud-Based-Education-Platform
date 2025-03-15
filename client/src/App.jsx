@@ -44,10 +44,10 @@ const App = () => {
 
           {/* Protected base routes */}
           <Route element={<PrivateRoute />}>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<ClassList />} />
+            {/* <Route path="/" element={<Home />} /> */}
             <Route path="/meet/:meetingId" element={<Meet />} />
             <Route path="/dashboard" element={<DashboardRouter />} />
-            <Route path="/classes" element={<ClassList />} />
             <Route path="/classes/:classId" element={<ClassDetails />} />
             <Route
               path="/classes/:classId/meeting/:meetingId"
@@ -67,6 +67,7 @@ const App = () => {
               }
             >
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/classes" element={<ClassList />} />
               <Route path="/admin/users" element={<UsersList />} />
               <Route path="/admin/create-user" element={<CreateUser />} />
               <Route path="/admin/create-class" element={<CreateClass />} />
