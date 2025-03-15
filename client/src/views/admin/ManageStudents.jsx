@@ -107,7 +107,7 @@ const ManageStudents = () => {
       });
       // Refresh data
       // FIXME: why are we doing a had reload, we can do optimistic update
-      window.location.reload();
+      // window.location.reload();
     } catch (error) {
       console.error("Failed to enroll student:", error);
       setError("Failed to enroll student");

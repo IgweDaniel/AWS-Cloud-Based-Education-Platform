@@ -60,6 +60,8 @@ export const ClassList = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  console.log({ user });
+
   useEffect(() => {
     const fetchClasses = async () => {
       try {

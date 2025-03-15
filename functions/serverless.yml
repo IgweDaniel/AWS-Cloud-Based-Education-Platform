@@ -28,6 +28,7 @@ provider:
         - dynamodb:DeleteItem
       Resource:
         - arn:aws:dynamodb:${self:provider.region}:*:table/Classes
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Classes/index/*
         - arn:aws:dynamodb:${self:provider.region}:*:table/Enrollments
         - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings
         - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings/index/*
@@ -133,3 +134,75 @@ functions:
 
 plugins:
   - serverless-offline
+
+resources:
+  Resources:
+    ClassesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Classes
+        AttributeDefinitions:
+          - AttributeName: classId
+            AttributeType: S
+          - AttributeName: teacherId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: classId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: TeacherIndex
+            KeySchema:
+              - AttributeName: teacherId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    EnrollmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Enrollments
+        AttributeDefinitions:
+          - AttributeName: classId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: classId
+            KeyType: HASH
+          - AttributeName: userId
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    MeetingsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Meetings
+        AttributeDefinitions:
+          - AttributeName: meetingId
+            AttributeType: S
+          - AttributeName: classId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: meetingId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ClassIndex
+            KeySchema:
+              - AttributeName: classId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

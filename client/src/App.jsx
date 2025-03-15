@@ -20,6 +20,7 @@ import ClassDetails from "./views/ClassDetails";
 import UsersList from "./views/admin/UsersList";
 import { AdminLayout } from "./layout/AdminLayout";
 import AdminDashboard from "./views/AdminDashboard";
+import ManageStudents from "./views/admin/ManageStudents";
 
 Amplify.configure(awsconfig);
 
@@ -36,8 +37,8 @@ Amplify.configure(awsconfig);
  */
 const App = () => {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
 
@@ -48,7 +49,15 @@ const App = () => {
             <Route path="/dashboard" element={<DashboardRouter />} />
             <Route path="/classes" element={<ClassList />} />
             <Route path="/classes/:classId" element={<ClassDetails />} />
-
+            <Route
+              path="/classes/:classId/meeting/:meetingId"
+              element={<Meet />}
+            />
+            {/* http://localhost:5173/admin/class/class-1741762643733/students */}
+            <Route
+              path="/admin/class/:classId/students"
+              element={<ManageStudents />}
+            />
             {/* Admin routes */}
             <Route
               element={
@@ -65,8 +74,8 @@ const App = () => {
             </Route>
           </Route>
         </Routes>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 };
 

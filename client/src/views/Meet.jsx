@@ -20,6 +20,7 @@ import {
 import { FcEndCall } from "react-icons/fc";
 
 import { authenticatedFetch } from "../utils/fetch";
+import { ENDPOINTS } from "../constants";
 
 const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
 const deviceController = new DefaultDeviceController(logger);
@@ -176,7 +177,7 @@ const Meet = () => {
   const joinMeetingHandler = async () => {
     try {
       setIsLoading(true);
-      const response = await authenticatedFetch("/api/meetings/join", {
+      const response = await authenticatedFetch(ENDPOINTS.meetings.join, {
         method: "POST",
         body: JSON.stringify({
           meetingId,

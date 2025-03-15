@@ -53,6 +53,14 @@ const verifier = CognitoJwtVerifier.create({
 //   clientId: COGNITO_CLIENT_ID,
 // });
 
+function createAttendee(meetingId, externalUserId) {
+  const command = new CreateAttendeeCommand({
+    MeetingId: meetingId,
+    ExternalUserId: externalUserId,
+  });
+  return chimeClient.send(command);
+}
+
 const authenticate = async (event) => {
   try {
     const token = event.headers.Authorization?.replace("Bearer ", "");
@@ -119,7 +127,7 @@ const assignUserRole = async (username, role) => {
   }
 };
 
-const verifyClassAccess = async (userId, classId) => {
+const verifyClassAccess = async (userId, userRole, classId) => {
   const enrollment = await dynamoDB.getItem({
     TableName: "Enrollments",
     Key: {
@@ -136,7 +144,10 @@ const verifyClassAccess = async (userId, classId) => {
       },
     });
 
-    if (classData.Item?.teacherId?.S !== userId) {
+    if (
+      classData.Item?.teacherId?.S !== userId &&
+      userRole !== ROLES.SUPER_ADMIN
+    ) {
       throw new Error("Not authorized to access this class");
     }
   }
@@ -146,7 +157,10 @@ const verifyClassAccess = async (userId, classId) => {
 module.exports.createMeeting = async (event) => {
   try {
     const userData = await authenticate(event);
-    const { classId } = JSON.parse(event.body);
+    const { classId } = JSON.parse(event.body ?? "{}");
+    if (!classId) {
+      return errorResponse("ClassId is required", 400);
+    }
 
     // Verify user is the teacher of the class
     const classData = await dynamoDB.getItem({
@@ -210,8 +224,9 @@ module.exports.joinMeeting = async (event) => {
       return errorResponse("Meeting not found", 404);
     }
 
+    const userRole = userData["custom:role"];
     // Verify class access
-    await verifyClassAccess(userData.sub, meeting.Item.classId.S);
+    await verifyClassAccess(userData.sub, userRole, meeting.Item.classId.S);
 
     // Get Chime meeting
     const getMeetingCommand = new GetMeetingCommand({
@@ -270,18 +285,31 @@ module.exports.assignRole = async (event) => {
 
 module.exports.createClass = async (event) => {
   try {
-    // Verify super admin role
     const user = await verifyRole(event, ["SUPER_ADMIN"]);
-
     const { className, teacherId } = JSON.parse(event.body);
-    const classId = "class-" + Date.now();
 
+    // Get teacher details from Cognito
+    const command = new AdminGetUserCommand({
+      Username: teacherId,
+      UserPoolId: USER_POOL_ID,
+    });
+    const teacher = await cognito.send(command);
+
+    const firstName = teacher.UserAttributes.find(
+      (attr) => attr.Name === "given_name"
+    ).Value;
+    const lastName = teacher.UserAttributes.find(
+      (attr) => attr.Name === "family_name"
+    ).Value;
+
+    const classId = "class-" + Date.now();
     await dynamoDB.putItem({
       TableName: "Classes",
       Item: {
         classId: { S: classId },
         className: { S: className },
         teacherId: { S: teacherId },
+        teacherName: { S: `${firstName} ${lastName}` },
         createdAt: { S: new Date().toISOString() },
       },
     });
@@ -295,9 +323,27 @@ module.exports.createClass = async (event) => {
 module.exports.enrollStudent = async (event) => {
   try {
     // Verify super admin role
-    const user = await verifyRole(event, ["SUPER_ADMIN"]);
+    await verifyRole(event, ["SUPER_ADMIN"]);
 
-    const { classId, studentId } = JSON.parse(event.body);
+    const { studentId } = JSON.parse(event.body);
+    const { classId } = event.pathParameters;
+    // Verify student role
+    const command = new AdminGetUserCommand({
+      Username: studentId,
+      UserPoolId: USER_POOL_ID,
+    });
+    const studentUser = await cognito.send(command);
+
+    console.log({ studentUser });
+
+    const roleAttribute = studentUser.UserAttributes.find(
+      (attr) => attr.Name === "custom:role"
+    );
+    console.log({ roleAttribute });
+
+    if (!roleAttribute || roleAttribute.Value !== ROLES.STUDENT) {
+      return errorResponse("User must have STUDENT role to be enrolled", 400);
+    }
 
     await dynamoDB.putItem({
       TableName: "Enrollments",
@@ -342,9 +388,9 @@ module.exports.getClasses = async (event) => {
         break;
 
       case "STUDENT":
-        const enrollments = await dynamoDB.query({
+        const enrollments = await dynamoDB.scan({
           TableName: "Enrollments",
-          KeyConditionExpression: "userId = :userId",
+          FilterExpression: "userId = :userId",
           ExpressionAttributeValues: {
             ":userId": { S: userData.sub },
           },
@@ -356,7 +402,7 @@ module.exports.getClasses = async (event) => {
             const classData = await dynamoDB.getItem({
               TableName: "Classes",
               Key: {
-                classId: enrollment.classId,
+                classId: { S: enrollment.classId.S },
               },
             });
             return classData.Item;
@@ -365,37 +411,23 @@ module.exports.getClasses = async (event) => {
         break;
     }
 
-    items = items.map(async (item) => {
-      console.log({ item });
-      const command = new AdminGetUserCommand({
-        Username: item.teacherId.S,
-        UserPoolId: USER_POOL_ID,
-      });
-      const response = await cognito.send(command);
-      console.log({ response });
-      return {
-        classId: item.classId.S,
-        className: item.className.S,
-        createdAt: item.createdAt.S,
-        teacherId: item.teacherId.S,
-        teacherName: `${
-          response.UserAttributes.find((attr) => attr.Name === "given_name")
-            .Value
-        } ${
-          response.UserAttributes.find((attr) => attr.Name === "family_name")
-            ?.Value
-        }`,
-      };
-    });
-
-    items = await Promise.all(items);
-    console.log({ finalItems: items });
+    items = items.map((item) => ({
+      classId: item.classId.S,
+      className: item.className.S,
+      createdAt: item.createdAt.S,
+      teacherId: item.teacherId.S,
+      teacherName: item.teacherName.S,
+    }));
 
     return successResponse(items);
   } catch (error) {
     return errorResponse(error);
   }
 };
+
+// admin fugu
+// student john
+// teache lith
 
 // Add after getClasses endpoint
 
@@ -416,8 +448,11 @@ module.exports.getClassDetails = async (event) => {
       return errorResponse("Class not found", 404);
     }
 
+    console.log({ classData });
+
+    const userRole = userData["custom:role"];
     // Check access
-    await verifyClassAccess(userData.sub, classId);
+    await verifyClassAccess(userData.sub, userRole, classId);
 
     // Get student count and list
     const enrollments = await dynamoDB.query({
@@ -440,8 +475,15 @@ module.exports.getClassDetails = async (event) => {
       Limit: 1,
     });
 
+    const item = {
+      classId: classData.Item.classId.S,
+      className: classData.Item.className.S,
+      createdAt: classData.Item.createdAt.S,
+      teacherId: classData.Item.teacherId.S,
+      teacherName: classData.Item.teacherName.S,
+    };
     const response = {
-      ...classData.Item,
+      ...item,
       studentCount: enrollments.Items.length,
       students: enrollments.Items.map((item) => item.userId.S),
       activeMeeting: meetings.Items[0]?.meetingId.S,
@@ -549,7 +591,7 @@ module.exports.listUsers = async (event) => {
 
     // const users = await cognito.listUsers(params);
 
-    const formattedUsers = users.Users.map((user) => ({
+    let formattedUsers = users.Users.map((user) => ({
       id: user.Attributes.find((attr) => attr.Name === "sub")?.Value,
       username: user.Username,
       email: user.Attributes.find((attr) => attr.Name === "email")?.Value,
@@ -558,7 +600,11 @@ module.exports.listUsers = async (event) => {
         ?.Value,
       lastName: user.Attributes.find((attr) => attr.Name === "family_name")
         ?.Value,
-    })).filter((user) => user.role == role);
+    }));
+
+    if (role && role?.toLowerCase() != "ALL") {
+      formattedUsers = formattedUsers.filter((user) => user.role == role);
+    }
 
     return successResponse(formattedUsers);
   } catch (error) {

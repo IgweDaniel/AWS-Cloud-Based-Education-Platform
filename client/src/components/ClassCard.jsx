@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/fetch";
 import { useAuth } from "../context/auth";
+import { ENDPOINTS } from "../constants";
 
 const styles = {
   card: {
@@ -67,12 +68,13 @@ const ClassCard = ({ classItem, userRole }) => {
   const { user } = useAuth();
   const startMeeting = async () => {
     try {
-      const response = await authenticatedFetch("/api/meetings", {
+      const response = await authenticatedFetch(ENDPOINTS.meetings.create, {
         method: "POST",
         body: JSON.stringify({ classId: classItem.classId }),
       });
       const data = await response.json();
-      navigate(`/classes/${classItem.classId}/meeting/${data.meetingId}`);
+      const newMeetingId = data.meeting.Meeting.MeetingId;
+      navigate(`/classes/${classItem.classId}/meeting/${newMeetingId}`);
     } catch (error) {
       console.error("Error starting meeting:", error);
     }
@@ -83,7 +85,7 @@ const ClassCard = ({ classItem, userRole }) => {
       `/classes/${classItem.classId}/meeting/${classItem.activeMeetingId}`
     );
   };
-  console.log({ classItem });
+  console.log({ userRole });
 
   return (
     <div style={styles.card}>
@@ -99,7 +101,7 @@ const ClassCard = ({ classItem, userRole }) => {
       )}
 
       <div style={styles.buttonContainer}>
-        {userRole === "TEACHER" && classItem.teacherId === user?.sub && (
+        {userRole === "TEACHER" && classItem.teacherId === user?.userId && (
           <>
             <button
               onClick={startMeeting}

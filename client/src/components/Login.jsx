@@ -17,13 +17,16 @@ const Login = () => {
       console.log({ email, password });
 
       // await signIn(email, password);
-      await signIn({
+      const data = await signIn({
         username: email,
         password,
       });
+
+      console.log({ data });
+
       console.log("naviagting to /");
 
-      navigate("/");
+      navigate("/classes");
     } catch (err) {
       setError(err.message);
       setLoading(false);
