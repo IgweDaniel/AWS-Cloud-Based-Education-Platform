@@ -1,22 +1,30 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { fetchUserAttributes, getCurrentUser } from "aws-amplify/auth";
+import {
+  fetchUserAttributes,
+  getCurrentUser,
+  fetchAuthSession,
+} from "aws-amplify/auth";
 import { signOut } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
 import { useLocation } from "react-router-dom";
+import { HashLoader } from "react-spinners";
 const AuthContext = createContext({});
 
 // eslint-disable-next-line react/prop-types
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
   const location = useLocation();
   useEffect(() => {
-    checkUser();
-
-    const hubListenerCancelToken = Hub.listen("auth", ({ payload }) => {
+    // checkUser();
+    CheckSignedIn();
+    const hubListenerCancelToken = Hub.listen("auth", async ({ payload }) => {
       switch (payload.event) {
         case "signedIn":
-          setUser(payload.data);
+          // setUser(payload.data);
+          // await checkUser();
+          setSignedIn(true);
           console.log("user have been signedIn successfully.");
           break;
         case "signedOut":
@@ -49,6 +57,22 @@ export function AuthProvider({ children }) {
     };
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (signedIn) {
+      checkUser();
+    }
+  }, [signedIn]);
+
+  async function CheckSignedIn() {
+    try {
+      await fetchAuthSession();
+      setSignedIn(true);
+    } catch (err) {
+      console.error(err);
+      setSignedIn(false);
+      setLoading(false);
+    }
+  }
   async function checkUser() {
     try {
       const userData = await getCurrentUser();
@@ -70,8 +94,14 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {/* {!loading && children} */}
-      {children}
+      {loading ? (
+        <div className="min-h-screen bg-[#202124] text-white p-8 flex items-center justify-center">
+          <HashLoader color="#FFF" size={30} />
+        </div>
+      ) : (
+        children
+      )}
+      {/* {children} */}
     </AuthContext.Provider>
   );
 }

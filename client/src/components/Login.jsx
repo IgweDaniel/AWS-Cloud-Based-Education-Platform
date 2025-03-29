@@ -1,114 +1,136 @@
 import { useState } from "react";
 import { signIn } from "aws-amplify/auth";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+
+import { Alert, AlertDescription } from "./ui/alert";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "./ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { ClipLoader } from "react-spinners";
+import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { useAuth } from "@/context/auth";
+
+const formSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(2),
+});
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-
+  const { user } = useAuth();
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      console.log({ email, password });
 
-      // await signIn(email, password);
-      const data = await signIn({
-        username: email,
-        password,
+      await signIn({
+        username: form.getValues("email"),
+        password: form.getValues("password"),
       });
 
-      console.log({ data });
-
-      console.log("naviagting to /");
-
-      navigate("/classes");
+      console.log("naviagting to /dashboard");
+      navigate("/");
     } catch (err) {
       setError(err.message);
       setLoading(false);
     }
   };
 
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
-    <div style={styles.container}>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h2>Sign In</h2>
-        {error && <p style={styles.error}>{error}</p>}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={styles.input}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={styles.input}
-        />
-        <button type="submit" disabled={loading} style={styles.button}>
-          {loading ? "Loading..." : "Sign In"}
-        </button>
-      </form>
+    <div className="flex items-center justify-center min-h-screen ">
+      <Card className="w-full max-w-md !p-[30px]">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Sign In
+          </CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to access your account
+          </CardDescription>
+        </CardHeader>
+        <Form {...form}>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              {error && (
+                <Alert variant="destructive" className="mb-4">
+                  <ExclamationTriangleIcon className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <div className="space-y-2">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="doe@mail.com" {...field} />
+                      </FormControl>
+
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input placeholder="" {...field} type="password" />
+                      </FormControl>
+
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className=" mt-4">
+              <Button type="submit" className="" size="lg" disabled={loading}>
+                {loading ? <ClipLoader size={20} color="#fff" /> : "Sign In"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#202124",
-    color: "#fff",
-    padding: "1rem",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-    backgroundColor: "#3c4043",
-    padding: "2rem",
-    borderRadius: "8px",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-    width: "100%",
-    maxWidth: "400px",
-  },
-  input: {
-    padding: "12px 16px",
-    borderRadius: "8px",
-    border: "1px solid #5f6368",
-    backgroundColor: "#202124",
-    color: "#fff",
-    fontSize: "16px",
-    width: "100%",
-  },
-  button: {
-    padding: "12px 24px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#8ab4f8",
-    color: "#202124",
-    fontWeight: "bold",
-    cursor: "pointer",
-    fontSize: "16px",
-    transition: "background-color 0.2s ease",
-    "&:hover": {
-      backgroundColor: "#7aa3e7",
-    },
-  },
-  error: {
-    color: "#ea4335",
-    fontSize: "14px",
-    textAlign: "center",
-  },
 };
 
 export default Login;

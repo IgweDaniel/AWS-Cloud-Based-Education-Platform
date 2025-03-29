@@ -428,6 +428,15 @@ module.exports.getClasses = async (event) => {
           Limit: 1,
         });
 
+        // Need to count enrollments for each class
+        const enrollments = await dynamoDB.query({
+          TableName: "Enrollments",
+          KeyConditionExpression: "classId = :classId",
+          ExpressionAttributeValues: {
+            ":classId": { S: item.classId.S },
+          },
+        });
+
         return {
           classId: item.classId.S,
           className: item.className.S,
@@ -435,6 +444,7 @@ module.exports.getClasses = async (event) => {
           teacherId: item.teacherId.S,
           teacherName: item.teacherName.S,
           activeMeetingId: meetings.Items[0]?.meetingId.S || null,
+          studentCount: enrollments.Items.length, // Add this line
         };
       })
     );

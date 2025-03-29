@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import { authenticatedFetch } from "../utils/fetch";
 import { useNavigate } from "react-router-dom";
+import { ENDPOINTS } from "@/constants";
 
 const styles = {
   classGrid: {
@@ -47,7 +48,7 @@ export const TeacherDashboard = () => {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const response = await authenticatedFetch("/api/classes");
+        const response = await authenticatedFetch(ENDPOINTS.classes.list);
         const data = await response.json();
         setClasses(data);
       } catch (error) {

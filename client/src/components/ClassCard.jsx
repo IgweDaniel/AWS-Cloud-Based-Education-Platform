@@ -1,71 +1,17 @@
-/* eslint-disable react/prop-types */
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../utils/fetch";
 import { useAuth } from "../context/auth";
+import { authenticatedFetch } from "../utils/fetch";
 import { ENDPOINTS } from "../constants";
-
-const styles = {
-  card: {
-    backgroundColor: "#3c4043",
-    borderRadius: "8px",
-    padding: "1.5rem",
-    marginBottom: "1rem",
-    color: "#fff",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-    transition: "transform 0.2s ease",
-    "&:hover": {
-      transform: "translateY(-2px)",
-    },
-  },
-  title: {
-    fontSize: "1.25rem",
-    marginBottom: "0.5rem",
-    color: "#8ab4f8",
-  },
-  info: {
-    fontSize: "0.875rem",
-    color: "#e8eaed",
-    marginBottom: "1rem",
-  },
-  buttonContainer: {
-    display: "flex",
-    gap: "0.5rem",
-    flexWrap: "wrap",
-  },
-  button: {
-    padding: "0.5rem 1rem",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#8ab4f8",
-    color: "#202124",
-    fontWeight: "bold",
-    cursor: "pointer",
-    fontSize: "0.875rem",
-    transition: "background-color 0.2s ease",
-    "&:hover": {
-      backgroundColor: "#7aa3e7",
-    },
-  },
-  dangerButton: {
-    backgroundColor: "#ea4335",
-    "&:hover": {
-      backgroundColor: "#dc3626",
-    },
-  },
-  activeMeeting: {
-    backgroundColor: "#34a853",
-    color: "#fff",
-    padding: "0.25rem 0.5rem",
-    borderRadius: "4px",
-    fontSize: "0.75rem",
-    display: "inline-block",
-    marginBottom: "0.5rem",
-  },
-};
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const ClassCard = ({ classItem, userRole }) => {
   const navigate = useNavigate();
+
   const { user } = useAuth();
+
   const startMeeting = async () => {
     try {
       const response = await authenticatedFetch(ENDPOINTS.meetings.create, {
@@ -85,74 +31,87 @@ const ClassCard = ({ classItem, userRole }) => {
       `/classes/${classItem.classId}/meeting/${classItem.activeMeetingId}`
     );
   };
-  console.log({ userRole });
 
   return (
-    <div style={styles.card}>
-      <h3 style={styles.title}>{classItem.className}</h3>
+    <Card className="bg-[#3c4043] text-white transition-transform hover:-translate-y-0.5">
+      <CardHeader>
+        <CardTitle className="text-[#8ab4f8]">{classItem.className}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4 text-sm text-[#e8eaed]">
+          <p>Teacher: {classItem.teacherName}</p>
+          {classItem.studentCount && <p>Students: {classItem.studentCount}</p>}
+        </div>
 
-      <div style={styles.info}>
-        <p>Teacher: {classItem.teacherName}</p>
-        {classItem.studentCount && <p>Students: {classItem.studentCount}</p>}
-      </div>
-
-      {classItem.activeMeetingId && (
-        <div style={styles.activeMeeting}>Live Class in Progress</div>
-      )}
-
-      <div style={styles.buttonContainer}>
-        {userRole === "TEACHER" && classItem.teacherId === user?.userId && (
-          <>
-            <button
-              onClick={startMeeting}
-              style={styles.button}
-              disabled={classItem.activeMeetingId}
-            >
-              {classItem.activeMeetingId ? "Class in Progress" : "Start Class"}
-            </button>
-            <button
-              onClick={() => navigate(`/classes/${classItem.classId}/students`)}
-              style={styles.button}
-            >
-              Manage Students
-            </button>
-          </>
+        {classItem.activeMeetingId && (
+          <Badge className="mb-4 bg-[#34a853] hover:bg-[#34a853]">
+            Live Class in Progress
+          </Badge>
         )}
 
-        {userRole === "STUDENT" && classItem.activeMeetingId && (
-          <button onClick={joinMeeting} style={styles.button}>
-            Join Live Class
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {userRole === "TEACHER" && classItem.teacherId === user?.userId && (
+            <>
+              <Button
+                onClick={startMeeting}
+                disabled={classItem.activeMeetingId}
+                className="bg-[#8ab4f8] text-[#202124] hover:bg-[#7aa3e7]"
+              >
+                {classItem.activeMeetingId
+                  ? "Class in Progress"
+                  : "Start Class"}
+              </Button>
+              <Button
+                onClick={() =>
+                  navigate(`/classes/${classItem.classId}/students`)
+                }
+                className="bg-[#8ab4f8] text-[#202124] hover:bg-[#7aa3e7]"
+              >
+                Manage Students
+              </Button>
+            </>
+          )}
 
-        {userRole === "SUPER_ADMIN" && (
-          <>
-            <button
-              onClick={() => navigate(`/admin/class/${classItem.classId}/edit`)}
-              style={styles.button}
+          {userRole === "STUDENT" && classItem.activeMeetingId && (
+            <Button
+              onClick={joinMeeting}
+              className="bg-[#8ab4f8] text-[#202124] hover:bg-[#7aa3e7]"
             >
-              Edit Class
-            </button>
-            <button
-              onClick={() =>
-                navigate(`/admin/class/${classItem.classId}/students`)
-              }
-              style={styles.button}
-            >
-              Manage Students
-            </button>
-            <button
-              onClick={() =>
-                navigate(`/admin/class/${classItem.classId}/delete`)
-              }
-              style={{ ...styles.button, ...styles.dangerButton }}
-            >
-              Delete Class
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+              Join Live Class
+            </Button>
+          )}
+
+          {userRole === "SUPER_ADMIN" && (
+            <>
+              <Button
+                onClick={() =>
+                  navigate(`/admin/class/${classItem.classId}/edit`)
+                }
+                className="bg-[#8ab4f8] text-[#202124] hover:bg-[#7aa3e7]"
+              >
+                Edit Class
+              </Button>
+              <Button
+                onClick={() =>
+                  navigate(`/admin/class/${classItem.classId}/students`)
+                }
+                className="bg-[#8ab4f8] text-[#202124] hover:bg-[#7aa3e7]"
+              >
+                Manage Students
+              </Button>
+              <Button
+                onClick={() =>
+                  navigate(`/admin/class/${classItem.classId}/delete`)
+                }
+                className="bg-[#ea4335] text-white hover:bg-[#dc3626]"
+              >
+                Delete Class
+              </Button>
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
