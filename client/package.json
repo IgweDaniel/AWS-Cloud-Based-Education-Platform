@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host=0.0.0.0",
-    "build": "vite build",
+    "build": "node scripts/generate-aws-exports.js && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
