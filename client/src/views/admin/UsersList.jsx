@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../utils/fetch";
 import { ENDPOINTS } from "../../constants";
 import DashboardLayout from "../../components/DashboardLayout";
+import AdminDashboardLayout from "@/components/AdminDashboardLayout";
 
 const styles = {
   container: {
@@ -115,11 +116,14 @@ const UsersList = () => {
   }, [roleFilter]);
 
   if (loading)
-    return <DashboardLayout title="Users">Loading...</DashboardLayout>;
-  if (error) return <DashboardLayout title="Users">{error}</DashboardLayout>;
+    return (
+      <AdminDashboardLayout title="Users">Loading...</AdminDashboardLayout>
+    );
+  if (error)
+    return <AdminDashboardLayout title="Users">{error}</AdminDashboardLayout>;
 
   return (
-    <DashboardLayout title="Users">
+    <AdminDashboardLayout title="Users">
       <div style={styles.container}>
         <div style={styles.header}>
           <div style={styles.filters}>
@@ -189,7 +193,7 @@ const UsersList = () => {
           </tbody>
         </table>
       </div>
-    </DashboardLayout>
+    </AdminDashboardLayout>
   );
 };
 

@@ -29,6 +29,7 @@ export function AuthProvider({ children }) {
           break;
         case "signedOut":
           setUser(null);
+
           console.log("user have been signedOut successfully.");
           break;
         case "tokenRefresh":
@@ -55,7 +56,7 @@ export function AuthProvider({ children }) {
     return () => {
       hubListenerCancelToken();
     };
-  }, [location.pathname]);
+  }, []);
 
   useEffect(() => {
     if (signedIn) {
@@ -75,22 +76,36 @@ export function AuthProvider({ children }) {
   }
   async function checkUser() {
     try {
-      const userData = await getCurrentUser();
-      const attributes = await fetchUserAttributes();
+      await setUserSession();
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  }
+
+  async function setUserSession() {
+    try {
+      // const userData = await getCurrentUser();
+      // const attributes = await fetchUserAttributes();
+      const [userData, attributes] = await Promise.all([
+        getCurrentUser(),
+        fetchUserAttributes(),
+      ]);
       // console.log({ attributes });
       setUser({ ...userData, role: attributes["custom:role"] });
     } catch (err) {
       setUser(null);
-      console.error(err);
+      throw err;
     }
-    setLoading(false);
   }
 
   const value = {
     user,
     loading,
     logout: signOut,
+    setUserSession,
   };
+  console.log({ user });
 
   return (
     <AuthContext.Provider value={value}>

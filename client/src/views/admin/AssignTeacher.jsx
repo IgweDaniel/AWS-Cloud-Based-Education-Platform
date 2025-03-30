@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../utils/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
+import AdminDashboardLayout from "@/components/AdminDashboardLayout";
 
 const styles = {
   container: {
@@ -97,45 +98,47 @@ const AssignTeacher = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h1 style={styles.title}>Assign Teacher to Class</h1>
+    <AdminDashboardLayout>
+      <div style={styles.container}>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <h1 style={styles.title}>Assign Teacher to Class</h1>
 
-        {error && <div style={styles.error}>{error}</div>}
+          {error && <div style={styles.error}>{error}</div>}
 
-        <select
-          style={styles.select}
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          required
-        >
-          <option value="">Select Class</option>
-          {classes.map((classItem) => (
-            <option key={classItem.classId} value={classItem.classId}>
-              {classItem.className}
-            </option>
-          ))}
-        </select>
+          <select
+            style={styles.select}
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            required
+          >
+            <option value="">Select Class</option>
+            {classes.map((classItem) => (
+              <option key={classItem.classId} value={classItem.classId}>
+                {classItem.className}
+              </option>
+            ))}
+          </select>
 
-        <select
-          style={styles.select}
-          value={selectedTeacher}
-          onChange={(e) => setSelectedTeacher(e.target.value)}
-          required
-        >
-          <option value="">Select Teacher</option>
-          {teachers.map((teacher) => (
-            <option key={teacher.username} value={teacher.username}>
-              {teacher.firstName} {teacher.lastName}
-            </option>
-          ))}
-        </select>
+          <select
+            style={styles.select}
+            value={selectedTeacher}
+            onChange={(e) => setSelectedTeacher(e.target.value)}
+            required
+          >
+            <option value="">Select Teacher</option>
+            {teachers.map((teacher) => (
+              <option key={teacher.username} value={teacher.username}>
+                {teacher.firstName} {teacher.lastName}
+              </option>
+            ))}
+          </select>
 
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? "Assigning..." : "Assign Teacher"}
-        </button>
-      </form>
-    </div>
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? "Assigning..." : "Assign Teacher"}
+          </button>
+        </form>
+      </div>
+    </AdminDashboardLayout>
   );
 };
 

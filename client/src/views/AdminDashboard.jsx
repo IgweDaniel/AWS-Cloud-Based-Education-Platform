@@ -1,5 +1,7 @@
+import { FiBook, FiUsers } from "react-icons/fi";
 import DashboardLayout from "../components/DashboardLayout";
 import { useNavigate } from "react-router-dom";
+import AdminDashboardLayout from "@/components/AdminDashboardLayout";
 
 const styles = {
   statsGrid: {
@@ -58,7 +60,7 @@ export const AdminDashboard = () => {
   const navigate = useNavigate();
 
   return (
-    <DashboardLayout title="Admin Dashboard">
+    <AdminDashboardLayout>
       <section style={styles.section}>
         <h2 style={styles.sectionTitle}>Quick Actions</h2>
         <div style={styles.actionGrid}>
@@ -88,7 +90,7 @@ export const AdminDashboard = () => {
           </button>
         </div>
       </section>
-    </DashboardLayout>
+    </AdminDashboardLayout>
   );
 };
 

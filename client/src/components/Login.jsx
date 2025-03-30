@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { signIn } from "aws-amplify/auth";
+import { fetchUserAttributes, getCurrentUser, signIn } from "aws-amplify/auth";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -38,7 +38,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, setUserSession } = useAuth();
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -56,6 +56,7 @@ const Login = () => {
         password: form.getValues("password"),
       });
 
+      await setUserSession();
       console.log("naviagting to /dashboard");
       navigate("/");
     } catch (err) {

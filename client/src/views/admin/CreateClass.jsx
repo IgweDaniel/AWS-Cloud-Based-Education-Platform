@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../utils/fetch";
 import { ENDPOINTS } from "../../constants";
+import AdminDashboardLayout from "@/components/AdminDashboardLayout";
 
 const styles = {
   container: {
@@ -59,30 +60,32 @@ const CreateClass = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h1>Create New Class</h1>
-        <input
-          style={styles.input}
-          type="text"
-          placeholder="Class Name"
-          value={className}
-          onChange={(e) => setClassName(e.target.value)}
-          required
-        />
-        <input
-          style={styles.input}
-          type="text"
-          placeholder="Teacher ID"
-          value={teacherId}
-          onChange={(e) => setTeacherId(e.target.value)}
-          required
-        />
-        <button style={styles.button} type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create Class"}
-        </button>
-      </form>
-    </div>
+    <AdminDashboardLayout>
+      <div style={styles.container}>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <h1>Create New Class</h1>
+          <input
+            style={styles.input}
+            type="text"
+            placeholder="Class Name"
+            value={className}
+            onChange={(e) => setClassName(e.target.value)}
+            required
+          />
+          <input
+            style={styles.input}
+            type="text"
+            placeholder="Teacher ID"
+            value={teacherId}
+            onChange={(e) => setTeacherId(e.target.value)}
+            required
+          />
+          <button style={styles.button} type="submit" disabled={loading}>
+            {loading ? "Creating..." : "Create Class"}
+          </button>
+        </form>
+      </div>
+    </AdminDashboardLayout>
   );
 };
 

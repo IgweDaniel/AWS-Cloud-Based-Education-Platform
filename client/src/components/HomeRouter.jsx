@@ -12,6 +12,7 @@ import UsersList from "../views/admin/UsersList";
 import ManageStudents from "../views/admin/ManageStudents";
 
 import Meet from "../views/Meet";
+import AdminClassList from "../views/admin/AdminClassList";
 
 export const HomeRouter = () => {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ export const HomeRouter = () => {
   const renderAdminRoutes = () => (
     <>
       <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/classes" element={<ClassList />} />
+      <Route path="/admin/classes" element={<AdminClassList />} />
       <Route path="/admin/users" element={<UsersList />} />
       <Route path="/admin/create-user" element={<CreateUser />} />
       <Route path="/admin/create-class" element={<CreateClass />} />

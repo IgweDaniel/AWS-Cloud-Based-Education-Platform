@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +63,9 @@ const DashboardLayout = ({ children, title, navItems }) => {
         <SheetContent side="left" className="w-64 p-0  ">
           <div className="flex flex-col h-full bg-[#202124] text-white ">
             <div className="p-6 border-b">
-              <h2 className="text-lg font-medium">Dashboard</h2>
+              <Link to="/">
+                <h2 className="text-lg font-medium">Dashboard</h2>
+              </Link>
             </div>
             <nav className="flex flex-col gap-1 p-2 flex-1">
               {allNavItems.map((item, i) => (
@@ -83,7 +85,9 @@ const DashboardLayout = ({ children, title, navItems }) => {
       {/* Desktop sidebar */}
       <div className="hidden md:flex w-64 flex-col border-r bg-[#202124] text-white ">
         <div className="p-6 border-b">
-          <h2 className="text-lg font-medium">Dashboard</h2>
+          <Link to="/">
+            <h2 className="text-lg font-medium">Dashboard</h2>
+          </Link>
         </div>
         <nav className="flex flex-col gap-1 p-2 flex-1">
           {allNavItems.map((item, i) => (

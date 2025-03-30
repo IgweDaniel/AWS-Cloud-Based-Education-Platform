@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../utils/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
+import AdminDashboardLayout from "@/components/AdminDashboardLayout";
 
 const styles = {
   container: {
@@ -117,83 +118,85 @@ const CreateUser = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <h1 style={styles.title}>Create New User</h1>
+    <AdminDashboardLayout>
+      <div style={styles.container}>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <h1 style={styles.title}>Create New User</h1>
 
-        {error && <div style={styles.error}>{error}</div>}
-        {success && <div style={styles.success}>{success}</div>}
+          {error && <div style={styles.error}>{error}</div>}
+          {success && <div style={styles.success}>{success}</div>}
 
-        <input
-          style={styles.input}
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
+          <input
+            style={styles.input}
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          style={styles.input}
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          minLength={8}
-        />
+          <input
+            style={styles.input}
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            minLength={8}
+          />
 
-        <input
-          style={styles.input}
-          type="text"
-          name="firstName"
-          placeholder="First Name"
-          value={formData.firstName}
-          onChange={handleChange}
-          required
-        />
+          <input
+            style={styles.input}
+            type="text"
+            name="firstName"
+            placeholder="First Name"
+            value={formData.firstName}
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          style={styles.input}
-          type="text"
-          name="lastName"
-          placeholder="Last Name"
-          value={formData.lastName}
-          onChange={handleChange}
-          required
-        />
+          <input
+            style={styles.input}
+            type="text"
+            name="lastName"
+            placeholder="Last Name"
+            value={formData.lastName}
+            onChange={handleChange}
+            required
+          />
 
-        <select
-          style={styles.select}
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          required
-        >
-          <option value="STUDENT">Student</option>
-          <option value="TEACHER">Teacher</option>
-        </select>
-
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? "Creating..." : "Create User"}
-          </button>
-
-          <button
-            type="button"
-            style={{
-              ...styles.button,
-              backgroundColor: "#3c4043",
-            }}
-            onClick={() => navigate("/dashboard")}
+          <select
+            style={styles.select}
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            required
           >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
+            <option value="STUDENT">Student</option>
+            <option value="TEACHER">Teacher</option>
+          </select>
+
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <button type="submit" style={styles.button} disabled={loading}>
+              {loading ? "Creating..." : "Create User"}
+            </button>
+
+            <button
+              type="button"
+              style={{
+                ...styles.button,
+                backgroundColor: "#3c4043",
+              }}
+              onClick={() => navigate("/dashboard")}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </AdminDashboardLayout>
   );
 };
 
