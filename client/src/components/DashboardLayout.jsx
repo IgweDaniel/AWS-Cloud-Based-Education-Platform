@@ -101,7 +101,7 @@ const DashboardLayout = ({ children, title, navItems }) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col  text-white">
         <header className="border-b p-6">
-          <h1 className="text-2xl font-semibold">{title}</h1>
+          <h1 className="text-2xl font-semibold ml-10 md:ml-0 ">{title}</h1>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>

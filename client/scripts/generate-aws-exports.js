@@ -1,5 +1,6 @@
 // scripts/generate-aws-exports.js
 import fs from 'fs';
+import 'dotenv/config'
 
 const awsExports = {
   aws_project_region: process.env.AWS_REGION,

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host=0.0.0.0",
-    "build": "node scripts/generate-aws-exports.js && vite build",
+    "gen:aws-exports": "node scripts/generate-aws-exports.js",
+    "build": "npm run gen:aws-exports && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -21,6 +22,7 @@
     "axios": "^1.8.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.7",
     "global": "^4.4.0",
     "lucide-react": "^0.482.0",
     "react": "^19.0.0",

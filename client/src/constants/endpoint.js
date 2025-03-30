@@ -1,5 +1,6 @@
-export const API_BASE_URL =
-  "https://8dhkivuce0.execute-api.us-east-1.amazonaws.com/dev";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// export const API_BASE_URL =
+//   "https://8dhkivuce0.execute-api.us-east-1.amazonaws.com/dev";
 
 export const ENDPOINTS = {
   meetings: {
