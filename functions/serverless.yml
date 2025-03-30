@@ -4,6 +4,9 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
+  environment:
+    USER_POOL_ID: ${param:USER_POOL_ID}
+    CLIENT_ID: ${param:CLIENT_ID}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -16,8 +19,51 @@ provider:
         - chime:ListMeetings
         - chime:GetAttendee
       Resource: "*"
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:DeleteItem
+      Resource:
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Classes
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Classes/index/*
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Enrollments
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings/index/*
+    - Effect: Allow
+      Action:
+        - cognito-idp:AdminCreateUser
+        - cognito-idp:AdminGetUser
+        - cognito-idp:AdminSetUserPassword
+        - cognito-idp:ListUsers
+        - cognito-idp:AdminUpdateUserAttributes
+      Resource:
+        - arn:aws:cognito-idp:eu-north-1:*:userpool/${self:provider.environment.USER_POOL_ID}
+        - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${self:provider.environment.USER_POOL_ID}
 
 functions:
+  checkMeetingStatus:
+    handler: handler.checkMeetingStatus
+    events:
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: false
+          description: "Check and clean up stale meetings every 5 minutes"
+
+  getMeetingStatus:
+    handler: handler.getMeetingStatus
+    events:
+      - http:
+          path: meetings/{meetingId}/status
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                meetingId: true
+
   createMeeting:
     handler: handler.createMeeting
     events:
@@ -42,5 +88,141 @@ functions:
           method: post
           cors: true
 
+  assignRole:
+    handler: handler.assignRole
+    events:
+      - http:
+          path: users/role
+          method: post
+          cors: true
+
+  createClass:
+    handler: handler.createClass
+    events:
+      - http:
+          path: classes
+          method: post
+          cors: true
+
+  enrollStudent:
+    handler: handler.enrollStudent
+    events:
+      - http:
+          path: classes/{classId}/enroll
+          method: post
+          cors: true
+
+  getClasses:
+    handler: handler.getClasses
+    events:
+      - http:
+          path: classes
+          method: get
+          cors: true
+
+  getClassDetails:
+    handler: handler.getClassDetails
+    events:
+      - http:
+          path: classes/{classId}
+          method: get
+          cors: true
+
+  createUser:
+    handler: handler.createUser
+    events:
+      - http:
+          path: users
+          method: post
+          cors: true
+
+  listUsers:
+    handler: handler.listUsers
+    events:
+      - http:
+          path: users
+          method: get
+          cors: true
+
+  assignUserRole:
+    handler: handler.assignUserRole
+    events:
+      - http:
+          path: users/role
+          method: post
+          cors: true
+
 plugins:
   - serverless-offline
+
+resources:
+  Resources:
+    ClassesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Classes
+        AttributeDefinitions:
+          - AttributeName: classId
+            AttributeType: S
+          - AttributeName: teacherId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: classId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: TeacherIndex
+            KeySchema:
+              - AttributeName: teacherId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    EnrollmentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Enrollments
+        AttributeDefinitions:
+          - AttributeName: classId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: classId
+            KeyType: HASH
+          - AttributeName: userId
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    MeetingsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Meetings
+        AttributeDefinitions:
+          - AttributeName: meetingId
+            AttributeType: S
+          - AttributeName: classId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: meetingId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ClassIndex
+            KeySchema:
+              - AttributeName: classId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

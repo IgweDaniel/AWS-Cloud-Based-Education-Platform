@@ -1,0 +1,10 @@
+serverless.params.json
+.serverless
+node_modules/
+
+
+node_modules/
+**/node_modules/
+
+functions/.serverless
+.env

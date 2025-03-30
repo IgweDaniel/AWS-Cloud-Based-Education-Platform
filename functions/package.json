@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "handler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "logs": "node scripts/logs.js",
+    "deploy": "node scripts/deploy.js",
+    "deploy:tables": "node scripts/deployTables.js"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +18,9 @@
   },
   "dependencies": {
     "-": "^0.0.1",
+    "@aws-sdk/client-cognito-identity-provider": "^3.758.0",
+    "@aws-sdk/client-dynamodb": "^3.758.0",
+    "aws-jwt-verify": "^5.0.0",
     "aws-sdk": "^2.1692.0",
     "D": "^1.0.0"
   }
