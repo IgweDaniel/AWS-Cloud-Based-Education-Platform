@@ -1,10 +1,13 @@
 import {
-  FiBook,
-  FiUsers,
-  FiPlus,
-  FiUserPlus,
-  FiUserCheck,
-} from "react-icons/fi";
+  BookOpen,
+  Users,
+  PlusSquare,
+  UserPlus,
+  UserCheck,
+  School,
+  Settings,
+  ClipboardList,
+} from "lucide-react";
 import DashboardLayout from "./DashboardLayout";
 import { useNavigate } from "react-router-dom";
 
@@ -14,29 +17,40 @@ const AdminDashboardLayout = ({ children, additionalNavItems = [] }) => {
   // Default admin navigation items
   const defaultNavItems = [
     {
-      label: "Classes",
-      icon: (props) => <FiBook size={20} {...props} />,
+      label: "Courses",
+      icon: (props) => <BookOpen className="h-4 w-4" />,
       onClick: () => navigate("/admin/classes"),
     },
     {
-      label: "Users",
-      icon: (props) => <FiUsers size={20} {...props} />,
+      label: "Faculty & Staff",
+      icon: (props) => <Users className="h-4 w-4" />,
       onClick: () => navigate("/admin/users"),
     },
     {
-      label: "Create Class",
-      icon: (props) => <FiPlus size={20} {...props} />,
+      label: "Create Course",
+      icon: (props) => <PlusSquare className="h-4 w-4" />,
       onClick: () => navigate("/admin/create-class"),
+      badge: "New",
     },
     {
       label: "Add User",
-      icon: (props) => <FiUserPlus size={20} {...props} />,
+      icon: (props) => <UserPlus className="h-4 w-4" />,
       onClick: () => navigate("/admin/create-user"),
     },
     {
-      label: "Assign Teacher",
-      icon: (props) => <FiUserCheck size={20} {...props} />,
+      label: "Assign Faculty",
+      icon: (props) => <UserCheck className="h-4 w-4" />,
       onClick: () => navigate("/admin/assign-teacher"),
+    },
+    {
+      label: "Academic Records",
+      icon: (props) => <ClipboardList className="h-4 w-4" />,
+      onClick: () => navigate("/admin/records"),
+    },
+    {
+      label: "University Settings",
+      icon: (props) => <Settings className="h-4 w-4" />,
+      onClick: () => navigate("/admin/settings"),
     },
   ];
 
@@ -44,7 +58,7 @@ const AdminDashboardLayout = ({ children, additionalNavItems = [] }) => {
   const navItems = [...defaultNavItems, ...additionalNavItems];
 
   return (
-    <DashboardLayout title={"Admin Dashboard"} navItems={navItems}>
+    <DashboardLayout title="University Administration" navItems={navItems}>
       {children}
     </DashboardLayout>
   );

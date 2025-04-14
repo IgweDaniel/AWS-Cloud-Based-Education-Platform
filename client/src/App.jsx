@@ -21,8 +21,8 @@ Amplify.configure(awsconfig);
 /classes              # List of classes
 /classes/:id          # Class details
 /classes/:id/meeting  # Live meeting
-/profile              # User profile
-/admin               # Admin controls
+/settings             # User settings
+/admin                # Admin controls
  */
 const App = () => {
   return (

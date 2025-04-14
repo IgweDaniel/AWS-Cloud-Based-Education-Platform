@@ -27,10 +27,11 @@ import { useForm } from "react-hook-form";
 import { ClipLoader } from "react-spinners";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/context/auth";
+import { GraduationCap, Info, ShieldCheckIcon } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(2),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(2, "Password is required"),
 });
 
 const Login = () => {
@@ -46,10 +47,12 @@ const Login = () => {
       password: "",
     },
   });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
+      setError("");
 
       await signIn({
         username: form.getValues("email"),
@@ -57,7 +60,6 @@ const Login = () => {
       });
 
       await setUserSession();
-      console.log("naviagting to /dashboard");
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -70,66 +72,99 @@ const Login = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen ">
-      <Card className="w-full max-w-md !p-[30px]">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Sign In
-          </CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <ExclamationTriangleIcon className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="space-y-2">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="doe@mail.com" {...field} />
-                      </FormControl>
+    <div className="min-h-screen bg-background campus-hero flex flex-col items-center justify-center px-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mb-3">
+            <GraduationCap className="h-6 w-6" />
+          </div>
+          <h1 className="text-3xl font-bold campus-text-gradient">
+            CBEP University
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Virtual Learning Platform
+          </p>
+        </div>
 
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input placeholder="" {...field} type="password" />
-                      </FormControl>
+        <Card className="w-full backdrop-blur-sm bg-card/90 shadow-lg border-primary/10">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">
+              Sign In
+            </CardTitle>
+            <CardDescription className="text-center">
+              Enter your credentials to access your account
+            </CardDescription>
+          </CardHeader>
+          <Form {...form}>
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive" className="mb-4">
+                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="university@email.edu"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input placeholder="" {...field} type="password" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={loading}
+                >
+                  {loading ? <ClipLoader size={20} color="#fff" /> : "Sign In"}
+                </Button>
+                <div className="mt-4 flex items-center text-xs text-muted-foreground">
+                  <Info className="h-3 w-3 mr-1" />
+                  <span>
+                    Default logins: student@example.com, teacher@example.com
+                    (pw: password)
+                  </span>
+                </div>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
 
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className=" mt-4">
-              <Button type="submit" className="" size="lg" disabled={loading}>
-                {loading ? <ClipLoader size={20} color="#fff" /> : "Sign In"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
+        <div className="text-center text-xs text-muted-foreground">
+          <p>
+            © {new Date().getFullYear()} CBEP University. All rights reserved.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

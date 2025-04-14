@@ -85,14 +85,30 @@ export function AuthProvider({ children }) {
 
   async function setUserSession() {
     try {
-      // const userData = await getCurrentUser();
-      // const attributes = await fetchUserAttributes();
       const [userData, attributes] = await Promise.all([
         getCurrentUser(),
         fetchUserAttributes(),
       ]);
-      // console.log({ attributes });
-      setUser({ ...userData, role: attributes["custom:role"] });
+
+      // Extract common attributes from Cognito
+      const userProfile = {
+        ...userData,
+        role: attributes["custom:role"],
+        email: attributes.email,
+        firstName: attributes.given_name || "",
+        lastName: attributes.family_name || "",
+        emailVerified: attributes.email_verified === "true",
+        sub: attributes.sub,
+        // Add creation date if available
+        createdAt: attributes.created_at
+          ? new Date(attributes.created_at)
+          : new Date(),
+        // Store all raw attributes for potential future use
+        attributes: attributes,
+      };
+
+      setUser(userProfile);
+      return userProfile;
     } catch (err) {
       setUser(null);
       throw err;

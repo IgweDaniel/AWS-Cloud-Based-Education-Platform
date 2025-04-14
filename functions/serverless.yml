@@ -7,6 +7,7 @@ provider:
   environment:
     USER_POOL_ID: ${param:USER_POOL_ID}
     CLIENT_ID: ${param:CLIENT_ID}
+    FRONTEND_URL: ${param:FRONTEND_URL, 'https://cbep-client.vercel.app'}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -29,6 +30,8 @@ provider:
       Resource:
         - arn:aws:dynamodb:${self:provider.region}:*:table/Classes
         - arn:aws:dynamodb:${self:provider.region}:*:table/Classes/index/*
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Courses
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Courses/index/*
         - arn:aws:dynamodb:${self:provider.region}:*:table/Enrollments
         - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings
         - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings/index/*
@@ -97,10 +100,10 @@ functions:
           cors: true
 
   createClass:
-    handler: handler.createClass
+    handler: handler.createCourse
     events:
       - http:
-          path: classes
+          path: courses
           method: post
           cors: true
 
@@ -108,7 +111,7 @@ functions:
     handler: handler.enrollStudent
     events:
       - http:
-          path: classes/{classId}/enroll
+          path: courses/{classId}/enroll
           method: post
           cors: true
 
@@ -116,7 +119,7 @@ functions:
     handler: handler.getClasses
     events:
       - http:
-          path: classes
+          path: courses
           method: get
           cors: true
 
@@ -124,7 +127,39 @@ functions:
     handler: handler.getClassDetails
     events:
       - http:
-          path: classes/{classId}
+          path: courses/{classId}
+          method: get
+          cors: true
+
+  getClassMetadata:
+    handler: handler.getClassMetadata
+    events:
+      - http:
+          path: courses/metadata
+          method: get
+          cors: true
+
+  getAcademicTerms:
+    handler: handler.getAcademicTerms
+    events:
+      - http:
+          path: academic/terms
+          method: get
+          cors: true
+
+  getCurrentTerm:
+    handler: handler.getCurrentTerm
+    events:
+      - http:
+          path: academic/current-term
+          method: get
+          cors: true
+
+  getDepartments:
+    handler: handler.getDepartments
+    events:
+      - http:
+          path: academic/departments
           method: get
           cors: true
 
@@ -152,6 +187,55 @@ functions:
           method: post
           cors: true
 
+  # Teacher-specific endpoints
+  getTeacherClasses:
+    handler: handler.getTeacherCourses
+    events:
+      - http:
+          path: courses/teacher
+          method: get
+          cors: true
+
+  getTeacherActiveSessions:
+    handler: handler.getTeacherActiveSessions
+    events:
+      - http:
+          path: courses/teacher/active-sessions
+          method: get
+          cors: true
+
+  startTeacherSession:
+    handler: handler.startTeacherSession
+    events:
+      - http:
+          path: courses/{classId}/start-session
+          method: post
+          cors: true
+
+  endTeacherSession:
+    handler: handler.endTeacherSession
+    events:
+      - http:
+          path: courses/{classId}/end-session
+          method: post
+          cors: true
+
+  getClassStudents:
+    handler: handler.getClassStudents
+    events:
+      - http:
+          path: courses/{classId}/students
+          method: get
+          cors: true
+
+  joinClass:
+    handler: handler.joinClass
+    events:
+      - http:
+          path: courses/{classId}/join
+          method: get
+          cors: true
+
 plugins:
   - serverless-offline
 
@@ -168,6 +252,32 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: classId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: TeacherIndex
+            KeySchema:
+              - AttributeName: teacherId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    CoursesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Courses
+        AttributeDefinitions:
+          - AttributeName: courseId
+            AttributeType: S
+          - AttributeName: teacherId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: courseId
             KeyType: HASH
         GlobalSecondaryIndexes:
           - IndexName: TeacherIndex

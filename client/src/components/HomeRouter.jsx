@@ -10,6 +10,7 @@ import CreateClass from "../views/admin/CreateClass";
 import AssignTeacher from "../views/admin/AssignTeacher";
 import UsersList from "../views/admin/UsersList";
 import ManageStudents from "../views/admin/ManageStudents";
+import Profile from "../views/Profile";
 
 import Meet from "../views/Meet";
 import AdminClassList from "../views/admin/AdminClassList";
@@ -17,12 +18,13 @@ import AdminClassList from "../views/admin/AdminClassList";
 export const HomeRouter = () => {
   const { user } = useAuth();
 
-  //   // Shared routes available to all authenticated users
-  //   const renderSharedRoutes = () => (
-  //     <>
-  //       <Route path="/profile" element={<div>Profile Page</div>} />
-  //     </>
-  //   );
+  // Shared routes available to all authenticated users
+  const renderSharedRoutes = () => (
+    <>
+      <Route path="/settings" element={<Profile />} />
+      <Route path="/profile" element={<Profile />} />
+    </>
+  );
 
   // Routes only for super admins
   const renderAdminRoutes = () => (
@@ -68,7 +70,7 @@ export const HomeRouter = () => {
       />
 
       {/* Shared routes */}
-      {/* {renderSharedRoutes()} */}
+      {renderSharedRoutes()}
 
       {/* Role-specific routes */}
       {user.role === "SUPER_ADMIN" ? renderAdminRoutes() : renderNonAdmin()}
