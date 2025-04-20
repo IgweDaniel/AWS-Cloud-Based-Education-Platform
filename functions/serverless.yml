@@ -99,7 +99,7 @@ functions:
           method: post
           cors: true
 
-  createClass:
+  createCourse:
     handler: handler.createCourse
     events:
       - http:
@@ -111,27 +111,27 @@ functions:
     handler: handler.enrollStudent
     events:
       - http:
-          path: courses/{classId}/enroll
+          path: courses/{courseId}/enroll
           method: post
           cors: true
 
-  getClasses:
-    handler: handler.getClasses
+  getCourses:
+    handler: handler.getCourses
     events:
       - http:
           path: courses
           method: get
           cors: true
 
-  getClassDetails:
+  getCourseDetails:
     handler: handler.getClassDetails
     events:
       - http:
-          path: courses/{classId}
+          path: courses/{courseId}
           method: get
           cors: true
 
-  getClassMetadata:
+  getCourseMetadata:
     handler: handler.getClassMetadata
     events:
       - http:
@@ -188,7 +188,7 @@ functions:
           cors: true
 
   # Teacher-specific endpoints
-  getTeacherClasses:
+  getTeacherCourses:
     handler: handler.getTeacherCourses
     events:
       - http:
@@ -208,7 +208,7 @@ functions:
     handler: handler.startTeacherSession
     events:
       - http:
-          path: courses/{classId}/start-session
+          path: courses/{courseId}/start-session
           method: post
           cors: true
 
@@ -216,23 +216,23 @@ functions:
     handler: handler.endTeacherSession
     events:
       - http:
-          path: courses/{classId}/end-session
+          path: courses/{courseId}/end-session
           method: post
           cors: true
 
-  getClassStudents:
+  getCourseStudents:
     handler: handler.getClassStudents
     events:
       - http:
-          path: courses/{classId}/students
+          path: courses/{courseId}/students
           method: get
           cors: true
 
-  joinClass:
+  joinCourse:
     handler: handler.joinClass
     events:
       - http:
-          path: courses/{classId}/join
+          path: courses/{courseId}/join
           method: get
           cors: true
 
@@ -298,12 +298,12 @@ resources:
       Properties:
         TableName: Enrollments
         AttributeDefinitions:
-          - AttributeName: classId
+          - AttributeName: courseId
             AttributeType: S
           - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: classId
+          - AttributeName: courseId
             KeyType: HASH
           - AttributeName: userId
             KeyType: RANGE
@@ -318,7 +318,7 @@ resources:
         AttributeDefinitions:
           - AttributeName: meetingId
             AttributeType: S
-          - AttributeName: classId
+          - AttributeName: courseId
             AttributeType: S
         KeySchema:
           - AttributeName: meetingId
@@ -326,7 +326,7 @@ resources:
         GlobalSecondaryIndexes:
           - IndexName: ClassIndex
             KeySchema:
-              - AttributeName: classId
+              - AttributeName: courseId
                 KeyType: HASH
             Projection:
               ProjectionType: ALL

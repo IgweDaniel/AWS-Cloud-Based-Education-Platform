@@ -15,7 +15,22 @@ import {
   Users,
   Presentation,
   Video,
+  User,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const navItems = [
+  {
+    label: "Courses",
+    icon: (props) => <BookOpen className={cn("h-4 w-4", props.className)} />,
+    href: "/classes",
+  },
+  {
+    label: "Profile",
+    icon: (props) => <User className={cn("h-4 w-4", props.className)} />,
+    href: "/settings",
+  },
+];
 
 export const TeacherDashboard = () => {
   const { user } = useAuth();
@@ -94,7 +109,7 @@ export const TeacherDashboard = () => {
   };
 
   return (
-    <DashboardLayout title="Teacher Dashboard">
+    <DashboardLayout title="Teacher Dashboard" navItems={navItems}>
       <div className="space-y-8">
         {/* Welcome Banner */}
         <div className="campus-gradient rounded-xl p-6 md:p-8 text-white shadow-lg">
@@ -195,7 +210,7 @@ export const TeacherDashboard = () => {
                     <p className="text-muted-foreground mb-4">
                       You have not been assigned any courses to teach yet.
                     </p>
-                    <Button onClick={() => navigate("/admin/classes")}>
+                    <Button onClick={() => navigate("/admin/courses")}>
                       View Available Courses
                     </Button>
                   </CardContent>
@@ -254,7 +269,7 @@ export const TeacherDashboard = () => {
                         <Presentation className="h-6 w-6 text-primary" />
                       </div>
                       <p className="mb-4">
-                        You don't have any active sessions right now
+                        You don&apos;t have any active sessions right now
                       </p>
                       <p className="text-sm mb-4">
                         Start a session from one of your courses to begin

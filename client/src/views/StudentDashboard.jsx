@@ -19,7 +19,6 @@ import {
   BookOpen,
   Calendar,
   Clock,
-  FileText,
   Bell,
   ChevronRight,
   GraduationCap,
@@ -27,8 +26,22 @@ import {
   BookOpenCheck,
   CheckSquare,
   Users,
+  User,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
+const navItems = [
+  {
+    label: "Courses",
+    icon: (props) => <BookOpen className={cn("h-4 w-4", props.className)} />,
+    href: "/classes",
+  },
+  {
+    label: "Profile",
+    icon: (props) => <User className={cn("h-4 w-4", props.className)} />,
+    href: "/settings",
+  },
+];
 export const StudentDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -136,6 +149,7 @@ export const StudentDashboard = () => {
     };
 
     fetchClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getStatusColor = (status) => {
@@ -149,19 +163,8 @@ export const StudentDashboard = () => {
     }
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-500";
-      case "medium":
-        return "bg-yellow-500";
-      default:
-        return "bg-blue-500";
-    }
-  };
-
   return (
-    <DashboardLayout title="Student Dashboard">
+    <DashboardLayout title="Student Dashboard" navItems={navItems}>
       <div className="space-y-8">
         {/* Welcome Banner */}
         <div className="campus-gradient rounded-xl p-6 md:p-8 text-white shadow-lg">
@@ -332,7 +335,7 @@ export const StudentDashboard = () => {
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg flex items-center">
                     <Calendar className="h-5 w-5 mr-2 text-primary" />
-                    Today's Schedule
+                    Today&apos;s Schedule
                   </CardTitle>
                   <Button
                     variant="ghost"

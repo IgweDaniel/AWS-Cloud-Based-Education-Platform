@@ -95,7 +95,7 @@ export const CreateClass = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate("/admin/classes");
+        navigate("/admin/courses");
       }, 1500);
     } catch (err) {
       setError(err.message || "An error occurred while creating the class");
@@ -294,7 +294,7 @@ export const CreateClass = () => {
                         type="button"
                         variant="outline"
                         className="mr-2"
-                        onClick={() => navigate("/admin/classes")}
+                        onClick={() => navigate("/admin/courses")}
                       >
                         Cancel
                       </Button>

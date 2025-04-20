@@ -3,14 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AdminDashboardLayout from "@/components/AdminDashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  BookOpen,
-  Users,
-  AlertCircle,
-  Activity,
-  Calendar,
-  Zap,
-} from "lucide-react";
+import { BookOpen, Users, Activity, Calendar, Zap } from "lucide-react";
 import { authenticatedFetch } from "@/utils/fetch";
 import { ENDPOINTS } from "@/constants";
 
@@ -154,7 +147,7 @@ export const AdminDashboard = () => {
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <Button
-              onClick={() => navigate("/admin/create-class")}
+              onClick={() => navigate("/admin/create-course")}
               variant="outline"
               className="h-auto py-6 flex flex-col items-center justify-center gap-2 text-foreground hover:bg-primary/5 hover:text-primary"
             >

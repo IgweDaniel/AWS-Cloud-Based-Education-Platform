@@ -349,7 +349,7 @@ module.exports.createCourse = async (event) => {
         Item: {
           courseId: { S: courseId },
           courseName: { S: courseName },
-          teacherId: { S: "" },
+          teacherId: { S: "UNASSIGNED" }, // Use a placeholder instead of empty string
           teacherName: { S: "Unassigned" },
           createdAt: { S: new Date().toISOString() },
         },
@@ -486,7 +486,7 @@ module.exports.getCourses = async (event) => {
       items.map(async (item) => {
         const meetings = await dynamoDB.query({
           TableName: "Meetings",
-          IndexName: "CourseIndex",
+          IndexName: "ClassIndex",
           KeyConditionExpression: "courseId = :courseId",
           ExpressionAttributeValues: {
             ":courseId": { S: item.courseId.S },
@@ -563,7 +563,7 @@ module.exports.getCourseDetails = async (event) => {
     // Get active meeting if any
     const meetings = await dynamoDB.query({
       TableName: "Meetings",
-      IndexName: "CourseIndex",
+      IndexName: "ClassIndex",
       KeyConditionExpression: "courseId = :courseId",
       ExpressionAttributeValues: {
         ":courseId": { S: courseId },
@@ -921,7 +921,7 @@ module.exports.getTeacherCourses = async (event) => {
       teacherCourses.Items.map(async (item) => {
         const meetings = await dynamoDB.query({
           TableName: "Meetings",
-          IndexName: "CourseIndex",
+          IndexName: "ClassIndex",
           KeyConditionExpression: "courseId = :courseId",
           ExpressionAttributeValues: {
             ":courseId": { S: item.courseId.S },
@@ -982,7 +982,7 @@ module.exports.getTeacherActiveSessions = async (event) => {
     for (const courseItem of teacherCourses.Items) {
       const meetings = await dynamoDB.query({
         TableName: "Meetings",
-        IndexName: "CourseIndex",
+        IndexName: "ClassIndex",
         KeyConditionExpression: "courseId = :courseId",
         ExpressionAttributeValues: {
           ":courseId": { S: courseItem.courseId.S },
@@ -1039,7 +1039,7 @@ module.exports.startTeacherSession = async (event) => {
     // Check if there's an existing active meeting
     const existingMeetings = await dynamoDB.query({
       TableName: "Meetings",
-      IndexName: "CourseIndex",
+      IndexName: "ClassIndex",
       KeyConditionExpression: "courseId = :courseId",
       ExpressionAttributeValues: {
         ":courseId": { S: courseId },
@@ -1124,7 +1124,7 @@ module.exports.endTeacherSession = async (event) => {
     // Get active meeting for this course
     const meetings = await dynamoDB.query({
       TableName: "Meetings",
-      IndexName: "CourseIndex",
+      IndexName: "ClassIndex",
       KeyConditionExpression: "courseId = :courseId",
       ExpressionAttributeValues: {
         ":courseId": { S: courseId },
@@ -1256,7 +1256,7 @@ module.exports.joinCourse = async (event) => {
     // Get active meeting for this course
     const meetings = await dynamoDB.query({
       TableName: "Meetings",
-      IndexName: "CourseIndex",
+      IndexName: "ClassIndex",
       KeyConditionExpression: "courseId = :courseId",
       ExpressionAttributeValues: {
         ":courseId": { S: courseId },

@@ -18,7 +18,7 @@ export default defineConfig({
     allowedHosts: true, // Allow all hosts
     proxy: {
       "/api": {
-        target: "https://8dhkivuce0.execute-api.us-east-1.amazonaws.com/dev",
+        target: "https://v0z6x8yxsl.execute-api.us-east-1.amazonaws.com/dev",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
         headers: {

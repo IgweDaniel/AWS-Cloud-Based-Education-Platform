@@ -10,10 +10,11 @@ import CreateClass from "../views/admin/CreateClass";
 import AssignTeacher from "../views/admin/AssignTeacher";
 import UsersList from "../views/admin/UsersList";
 import ManageStudents from "../views/admin/ManageStudents";
-import Profile from "../views/Profile";
+import ProfilePage from "../views/Profile";
 
 import Meet from "../views/Meet";
-import AdminClassList from "../views/admin/AdminClassList";
+import AdminCoursesList from "../views/admin/AdminCoursesList";
+import AdminProfilePage from "@/views/admin/AdminProfile";
 
 export const HomeRouter = () => {
   const { user } = useAuth();
@@ -21,8 +22,8 @@ export const HomeRouter = () => {
   // Shared routes available to all authenticated users
   const renderSharedRoutes = () => (
     <>
-      <Route path="/settings" element={<Profile />} />
-      <Route path="/profile" element={<Profile />} />
+      <Route path="/settings" element={<ProfilePage />} />
+      <Route path="/profile" element={<ProfilePage />} />
     </>
   );
 
@@ -30,15 +31,16 @@ export const HomeRouter = () => {
   const renderAdminRoutes = () => (
     <>
       <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/classes" element={<AdminClassList />} />
+      <Route path="/admin/courses" element={<AdminCoursesList />} />
       <Route path="/admin/users" element={<UsersList />} />
       <Route path="/admin/create-user" element={<CreateUser />} />
-      <Route path="/admin/create-class" element={<CreateClass />} />
+      <Route path="/admin/create-course" element={<CreateClass />} />
       <Route path="/admin/assign-teacher" element={<AssignTeacher />} />
       <Route
         path="/admin/class/:classId/students"
         element={<ManageStudents />}
       />
+      <Route path="/admin/profile" element={<AdminProfilePage />} />
     </>
   );
 

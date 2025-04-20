@@ -3,63 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../utils/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 import AdminDashboardLayout from "@/components/AdminDashboardLayout";
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#202124",
-    color: "#fff",
-    padding: "2rem",
-  },
-  form: {
-    maxWidth: "600px",
-    margin: "0 auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-  },
-  title: {
-    fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
-    marginBottom: "2rem",
-  },
-  input: {
-    padding: "12px 16px",
-    borderRadius: "8px",
-    border: "1px solid #3c4043",
-    backgroundColor: "#3c4043",
-    color: "#fff",
-    fontSize: "16px",
-  },
-  select: {
-    padding: "12px 16px",
-    borderRadius: "8px",
-    border: "1px solid #3c4043",
-    backgroundColor: "#3c4043",
-    color: "#fff",
-    fontSize: "16px",
-  },
-  button: {
-    padding: "12px 24px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#8ab4f8",
-    color: "#202124",
-    fontWeight: "bold",
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
-    "&:hover": {
-      backgroundColor: "#7aa3e7",
-    },
-  },
-  error: {
-    color: "#ea4335",
-    marginBottom: "1rem",
-  },
-  success: {
-    color: "#34a853",
-    marginBottom: "1rem",
-  },
-};
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { UserPlus, Shield } from "lucide-react";
+import { ClipLoader } from "react-spinners";
 
 const CreateUser = () => {
   const navigate = useNavigate();
@@ -91,9 +55,6 @@ const CreateUser = () => {
         throw new Error(data.error || "Failed to create user");
       }
 
-      const data = await response.json();
-      console.log({ data });
-
       setSuccess(`User created successfully: ${formData.email}`);
       setFormData({
         email: "",
@@ -119,82 +80,169 @@ const CreateUser = () => {
 
   return (
     <AdminDashboardLayout>
-      <div style={styles.container}>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <h1 style={styles.title}>Create New User</h1>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2 campus-text-gradient">
+            Create New User
+          </h1>
+          <p className="text-muted-foreground">
+            Add a new student or faculty member to the university system
+          </p>
+        </div>
 
-          {error && <div style={styles.error}>{error}</div>}
-          {success && <div style={styles.success}>{success}</div>}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Information</CardTitle>
+                <CardDescription>
+                  Enter the details for the new user account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {error && (
+                  <Alert variant="destructive" className="mb-6">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                {success && (
+                  <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
+                    <AlertDescription>{success}</AlertDescription>
+                  </Alert>
+                )}
 
-          <input
-            style={styles.input}
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                        placeholder="Enter first name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleChange}
+                        placeholder="Enter last name"
+                        required
+                      />
+                    </div>
+                  </div>
 
-          <input
-            style={styles.input}
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            minLength={8}
-          />
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="Enter email address"
+                      required
+                    />
+                  </div>
 
-          <input
-            style={styles.input}
-            type="text"
-            name="firstName"
-            placeholder="First Name"
-            value={formData.firstName}
-            onChange={handleChange}
-            required
-          />
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Enter password"
+                      required
+                      minLength={8}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Password must be at least 8 characters long
+                    </p>
+                  </div>
 
-          <input
-            style={styles.input}
-            type="text"
-            name="lastName"
-            placeholder="Last Name"
-            value={formData.lastName}
-            onChange={handleChange}
-            required
-          />
-
-          <select
-            style={styles.select}
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            required
-          >
-            <option value="STUDENT">Student</option>
-            <option value="TEACHER">Teacher</option>
-          </select>
-
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <button type="submit" style={styles.button} disabled={loading}>
-              {loading ? "Creating..." : "Create User"}
-            </button>
-
-            <button
-              type="button"
-              style={{
-                ...styles.button,
-                backgroundColor: "#3c4043",
-              }}
-              onClick={() => navigate("/dashboard")}
-            >
-              Cancel
-            </button>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">User Role</Label>
+                    <Select
+                      name="role"
+                      value={formData.role}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, role: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STUDENT">Student</SelectItem>
+                        <SelectItem value="TEACHER">Teacher</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </form>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/admin/users")}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSubmit} disabled={loading}>
+                  {loading ? (
+                    <>
+                      <ClipLoader size={18} color="#fff" className="mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Create User
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
-        </form>
+
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>User Role Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="font-medium mb-1 flex items-center">
+                    <Shield className="mr-2 h-4 w-4 text-primary" />
+                    Student Role
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Students can access courses they&apos;re enrolled in,
+                    participate in live classes, and view their academic
+                    records.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="font-medium mb-1 flex items-center">
+                    <Shield className="mr-2 h-4 w-4 text-primary" />
+                    Teacher Role
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Teachers can manage their assigned courses, create and lead
+                    live sessions, and track student participation.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </AdminDashboardLayout>
   );

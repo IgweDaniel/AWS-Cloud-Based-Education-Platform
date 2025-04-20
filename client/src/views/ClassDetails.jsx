@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 const ClassDetails = () => {
-  const { classId } = useParams();
+  const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
@@ -49,10 +49,12 @@ const ClassDetails = () => {
     try {
       const response = await authenticatedFetch(ENDPOINTS.meetings.create, {
         method: "POST",
-        body: JSON.stringify({ classId }),
+        body: JSON.stringify({ courseId }),
       });
       const data = await response.json();
-      navigate(`/classes/${classId}/meeting/${data.meeting.Meeting.MeetingId}`);
+      navigate(
+        `/classes/${courseId}/meeting/${data.meeting.Meeting.MeetingId}`
+      );
     } catch (error) {
       console.error("Error starting meeting:", error);
     }
@@ -62,7 +64,7 @@ const ClassDetails = () => {
     const fetchClassData = async () => {
       try {
         const response = await authenticatedFetch(
-          ENDPOINTS.classes.details(classId)
+          ENDPOINTS.classes.details(courseId)
         );
         if (!response.ok) {
           throw new Error("Failed to fetch class details");
@@ -78,7 +80,7 @@ const ClassDetails = () => {
     };
 
     fetchClassData();
-  }, [classId]);
+  }, [courseId]);
 
   if (loading) {
     return (
@@ -99,7 +101,7 @@ const ClassDetails = () => {
 
   const isTeacher =
     user.role === "TEACHER" && classData.teacherId === user.userId;
-  const isAdmin = user.role === "SUPER_ADMIN";
+  // const isAdmin = user.role === "SUPER_ADMIN";
 
   return (
     <DashboardLayout title="Course Details">
@@ -130,7 +132,7 @@ const ClassDetails = () => {
                     classData.activeMeeting
                       ? () =>
                           navigate(
-                            `/classes/${classId}/meeting/${classData.activeMeeting}`
+                            `/classes/${courseId}/meeting/${classData.activeMeeting}`
                           )
                       : startMeeting
                   }
@@ -157,7 +159,7 @@ const ClassDetails = () => {
                 <Button
                   onClick={() =>
                     navigate(
-                      `/classes/${classId}/meeting/${classData.activeMeeting}`
+                      `/classes/${courseId}/meeting/${classData.activeMeeting}`
                     )
                   }
                   className="bg-primary hover:bg-primary/90"
@@ -226,7 +228,7 @@ const ClassDetails = () => {
                         size="sm"
                         onClick={() =>
                           navigate(
-                            `/classes/${classId}/meeting/${classData.activeMeeting}`
+                            `/classes/${courseId}/meeting/${classData.activeMeeting}`
                           )
                         }
                       >

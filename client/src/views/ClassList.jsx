@@ -19,7 +19,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
@@ -329,7 +328,7 @@ export const ClassList = () => {
               </h2>
 
               {user?.role === "SUPER_ADMIN" && (
-                <Button onClick={() => navigate("/admin/create-class")}>
+                <Button onClick={() => navigate("/admin/create-course")}>
                   <BookMarked className="mr-2 h-4 w-4" />
                   Create New Course
                 </Button>
@@ -421,7 +420,7 @@ export const ClassList = () => {
                 </Button>
               )}
               {user?.role === ROLES.SUPER_ADMIN && (
-                <Button onClick={() => navigate("/admin/create-class")}>
+                <Button onClick={() => navigate("/admin/create-course")}>
                   Create New Course
                 </Button>
               )}

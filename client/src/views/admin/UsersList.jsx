@@ -2,89 +2,27 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../utils/fetch";
 import { ENDPOINTS } from "../../constants";
-import DashboardLayout from "../../components/DashboardLayout";
 import AdminDashboardLayout from "@/components/AdminDashboardLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ClipLoader } from "react-spinners";
 
-const styles = {
-  container: {
-    padding: "2rem",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "2rem",
-  },
-  filters: {
-    display: "flex",
-    gap: "1rem",
-    marginBottom: "2rem",
-  },
-  select: {
-    padding: "8px 16px",
-    borderRadius: "8px",
-    border: "1px solid #3c4043",
-    backgroundColor: "#3c4043",
-    color: "#fff",
-    fontSize: "14px",
-  },
-  button: {
-    padding: "8px 16px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#8ab4f8",
-    color: "#202124",
-    fontWeight: "bold",
-    cursor: "pointer",
-    transition: "background-color 0.2s ease",
-    "&:hover": {
-      backgroundColor: "#7aa3e7",
-    },
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "separate",
-    borderSpacing: "0 8px",
-  },
-  th: {
-    textAlign: "left",
-    padding: "12px",
-    color: "#8ab4f8",
-    fontWeight: "normal",
-  },
-  td: {
-    padding: "12px",
-    backgroundColor: "#3c4043",
-    "&:firstChild": {
-      borderTopLeftRadius: "8px",
-      borderBottomLeftRadius: "8px",
-    },
-    "&:lastChild": {
-      borderTopRightRadius: "8px",
-      borderBottomRightRadius: "8px",
-    },
-  },
-  roleChip: {
-    display: "inline-block",
-    padding: "4px 8px",
-    borderRadius: "16px",
-    fontSize: "12px",
-    fontWeight: "bold",
-  },
-};
-
-const getRoleStyle = (role) => {
-  switch (role) {
-    case "SUPER_ADMIN":
-      return { backgroundColor: "#ea4335", color: "#fff" };
-    case "TEACHER":
-      return { backgroundColor: "#34a853", color: "#fff" };
-    case "STUDENT":
-      return { backgroundColor: "#8ab4f8", color: "#202124" };
-    default:
-      return { backgroundColor: "#3c4043", color: "#fff" };
-  }
-};
+const ALL_FILTER = "all";
 
 const UsersList = () => {
   const navigate = useNavigate();
@@ -97,9 +35,10 @@ const UsersList = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const endpoint = roleFilter
-          ? `${ENDPOINTS.users.list}?role=${roleFilter}`
-          : ENDPOINTS.users.list;
+        const endpoint =
+          roleFilter == ALL_FILTER
+            ? `${ENDPOINTS.users.list}?role=${roleFilter}`
+            : ENDPOINTS.users.list;
 
         const response = await authenticatedFetch(endpoint);
         const data = await response.json();
@@ -117,84 +56,89 @@ const UsersList = () => {
 
   if (loading)
     return (
-      <AdminDashboardLayout title="Users">Loading...</AdminDashboardLayout>
+      <AdminDashboardLayout title="Users">
+        <div className="flex justify-center items-center py-12">
+          <ClipLoader size={30} color="#0f4c81" />
+        </div>
+      </AdminDashboardLayout>
     );
   if (error)
     return <AdminDashboardLayout title="Users">{error}</AdminDashboardLayout>;
 
   return (
     <AdminDashboardLayout title="Users">
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <div style={styles.filters}>
-            <select
-              style={styles.select}
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-            >
-              <option value="">All Roles</option>
-              <option value="TEACHER">Teachers</option>
-              <option value="STUDENT">Students</option>
-            </select>
-          </div>
-          <button
-            style={styles.button}
-            onClick={() => navigate("/admin/create-user")}
-          >
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Select onValueChange={setRoleFilter} value={roleFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter by role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_FILTER}>All Roles</SelectItem>
+              <SelectItem value="TEACHER">Teachers</SelectItem>
+              <SelectItem value="STUDENT">Students</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => navigate("/admin/create-user")}>
             Add New User
-          </button>
+          </Button>
         </div>
 
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>ID</th>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Role</th>
-              <th style={styles.th}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {users.map((user) => (
-              <tr key={user.username}>
-                <td style={styles.td}>{user.id}</td>
-                <td style={styles.td}>
-                  {user.firstName} {user.lastName}
-                </td>
-                <td style={styles.td}>{user.email}</td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.roleChip,
-                      ...getRoleStyle(user.role),
-                    }}
+              <TableRow key={user.username}>
+                <TableCell>{user.id}</TableCell>
+                <TableCell>{`${user.firstName} ${user.lastName}`}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={getRoleBadgeColor(user.role)}
                   >
                     {user.role}
-                  </span>
-                </td>
-                <td style={styles.td}>
-                  <button
-                    style={{
-                      ...styles.button,
-                      backgroundColor: "#3c4043",
-                      padding: "4px 8px",
-                      fontSize: "12px",
-                    }}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() =>
                       navigate(`/admin/users/${user.username}/edit`)
                     }
                   >
                     Edit
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </AdminDashboardLayout>
   );
+};
+
+const getRoleBadgeColor = (role) => {
+  switch (role) {
+    case "SUPER_ADMIN":
+      return "bg-red-100 text-red-800 border-red-300";
+    case "TEACHER":
+      return "bg-green-100 text-green-800 border-green-300";
+    case "STUDENT":
+      return "bg-blue-100 text-blue-800 border-blue-300";
+    default:
+      return "bg-gray-100 text-gray-800 border-gray-300";
+  }
 };
 
 export default UsersList;

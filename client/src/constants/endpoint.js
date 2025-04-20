@@ -13,20 +13,21 @@ export const ENDPOINTS = {
   classes: {
     list: `${API_BASE_URL}/courses`,
     create: `${API_BASE_URL}/courses`,
-    details: (classId) => `${API_BASE_URL}/courses/${classId}`,
-    enroll: (classId) => `${API_BASE_URL}/courses/${classId}/enroll`,
-    removeStudent: (classId) => `${API_BASE_URL}/courses/${classId}/student`,
-    update: (classId) => `${API_BASE_URL}/courses/${classId}`,
+    details: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
+    enroll: (courseId) => `${API_BASE_URL}/courses/${courseId}/enroll`,
+    removeStudent: (courseId) => `${API_BASE_URL}/courses/${courseId}/student`,
+    update: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
     metadata: `${API_BASE_URL}/courses/metadata`,
     teacher: {
       list: `${API_BASE_URL}/courses/teacher`,
       activeSessions: `${API_BASE_URL}/courses/teacher/active-sessions`,
-      startSession: (classId) =>
-        `${API_BASE_URL}/courses/${classId}/start-session`,
-      endSession: (classId) => `${API_BASE_URL}/courses/${classId}/end-session`,
-      students: (classId) => `${API_BASE_URL}/courses/${classId}/students`,
+      startSession: (courseId) =>
+        `${API_BASE_URL}/courses/${courseId}/start-session`,
+      endSession: (courseId) =>
+        `${API_BASE_URL}/courses/${courseId}/end-session`,
+      students: (courseId) => `${API_BASE_URL}/courses/${courseId}/students`,
     },
-    join: (classId) => `${API_BASE_URL}/courses/${classId}/join`,
+    join: (courseId) => `${API_BASE_URL}/courses/${courseId}/join`,
   },
   users: {
     list: `${API_BASE_URL}/users`,

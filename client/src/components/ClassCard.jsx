@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../utils/fetch";
@@ -25,7 +26,7 @@ const ClassCard = ({ classItem, userRole }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // Define mock department & schedule data based on classItem
+  // Define department & schedule data based on classItem
   const departmentMap = {
     "Introduction to Computer Science": "Computer Science",
     "Advanced Mathematics": "Mathematics",
@@ -49,10 +50,6 @@ const ClassCard = ({ classItem, userRole }) => {
   // Get department & schedule or use defaults
   const department = departmentMap[classItem.className] || "General Studies";
   const schedule = scheduleMap[classItem.className] || "Schedule TBD";
-
-  // Create randomized enrollment numbers for display
-  const totalStudents = Math.floor(Math.random() * 30) + 10;
-  const progress = Math.floor(Math.random() * 100);
 
   const handleJoinMeeting = async () => {
     setLoading(true);
@@ -127,7 +124,7 @@ const ClassCard = ({ classItem, userRole }) => {
           <div className="flex items-center text-sm">
             <GraduationCap className="h-4 w-4 mr-2 text-muted-foreground" />
             <span className="text-muted-foreground">
-              {classItem.teacher?.name || "No instructor assigned"}
+              {classItem.teacherName || "No instructor assigned"}
             </span>
           </div>
 
@@ -139,22 +136,8 @@ const ClassCard = ({ classItem, userRole }) => {
           <div className="flex items-center text-sm">
             <Users className="h-4 w-4 mr-2 text-muted-foreground" />
             <span className="text-muted-foreground">
-              {totalStudents} students enrolled
+              {classItem.studentCount || 0} students enrolled
             </span>
-          </div>
-
-          {/* Course progress indicator */}
-          <div>
-            <div className="flex justify-between mb-1 text-xs">
-              <span>Course Progress</span>
-              <span className="font-medium">{progress}%</span>
-            </div>
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="bg-primary h-full rounded-full"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
           </div>
         </div>
       </CardContent>

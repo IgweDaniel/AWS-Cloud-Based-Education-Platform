@@ -5,20 +5,7 @@ import { cn } from "@/lib/utils";
 
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import {
-  Menu,
-  LogOut,
-  BookOpen,
-  Users,
-  Bookmark,
-  Calendar,
-  GraduationCap,
-  Bell,
-  BarChart3,
-  Settings,
-  User,
-  Clock,
-} from "lucide-react";
+import { Menu, LogOut, GraduationCap, BarChart3, Clock } from "lucide-react";
 import { Badge } from "./ui/badge";
 import ProfileMenu from "./ProfileMenu";
 
@@ -58,22 +45,14 @@ const DashboardLayout = ({ children, title, navItems }) => {
   const { logout, user } = useAuth();
 
   // Default logout nav item that's always present
-  const defaultNavItems = [
+  const allNavItems = [
     {
       label: "Dashboard",
       icon: (props) => <BarChart3 className={cn("h-4 w-4", props.className)} />,
       href: "/",
     },
-    {
-      label: "Courses",
-      icon: (props) => <BookOpen className={cn("h-4 w-4", props.className)} />,
-      href: "/classes",
-    },
-    {
-      label: "Profile",
-      icon: (props) => <User className={cn("h-4 w-4", props.className)} />,
-      href: "/settings",
-    },
+    ...navItems,
+
     {
       label: "Logout",
       icon: (props) => <LogOut className={cn("h-4 w-4", props.className)} />,
@@ -85,8 +64,6 @@ const DashboardLayout = ({ children, title, navItems }) => {
   ];
 
   // Combine provided nav items with default items
-  const allNavItems = [...(navItems || []), ...defaultNavItems];
-
   const currentTime = new Date().toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
