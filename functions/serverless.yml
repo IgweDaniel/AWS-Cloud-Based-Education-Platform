@@ -27,6 +27,7 @@ provider:
         - dynamodb:Query
         - dynamodb:Scan
         - dynamodb:DeleteItem
+        - dynamodb:UpdateItem
       Resource:
         - arn:aws:dynamodb:${self:provider.region}:*:table/Classes
         - arn:aws:dynamodb:${self:provider.region}:*:table/Classes/index/*
@@ -47,13 +48,34 @@ provider:
         - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${self:provider.environment.USER_POOL_ID}
 
 functions:
-  checkMeetingStatus:
-    handler: handler.checkMeetingStatus
+  chimeEventHandler:
+    handler: handler.processEvent
     events:
-      - schedule:
-          rate: rate(5 minutes)
-          enabled: false
-          description: "Check and clean up stale meetings every 5 minutes"
+      - eventBridge:
+          pattern:
+            source:
+              - "aws.chime"
+            detail-type:
+              - "Chime Meeting State Change" # Adjust for specific events (e.g., "Chime Meeting Ended")
+  # checkMeetingStatus:
+  #   handler: handler.checkMeetingStatus
+  #   events:
+  #     - schedule:
+  #         rate: rate(5 minutes)
+  #         enabled: false
+  #         description: "Check and clean up stale meetings every 5 minutes"
+
+  updateCourseTeacher:
+    handler: handler.updateCourseTeacher
+    events:
+      - http:
+          path: courses/{courseId}/teacher
+          method: put
+          cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
 
   getMeetingStatus:
     handler: handler.getMeetingStatus
@@ -80,14 +102,6 @@ functions:
     events:
       - http:
           path: join-meeting
-          method: post
-          cors: true
-
-  deleteMeeting:
-    handler: handler.deleteMeeting
-    events:
-      - http:
-          path: delete-meeting
           method: post
           cors: true
 
@@ -124,7 +138,7 @@ functions:
           cors: true
 
   getCourseDetails:
-    handler: handler.getClassDetails
+    handler: handler.getCourseDetails
     events:
       - http:
           path: courses/{courseId}
@@ -132,7 +146,7 @@ functions:
           cors: true
 
   getCourseMetadata:
-    handler: handler.getClassMetadata
+    handler: handler.getCourseMetadata
     events:
       - http:
           path: courses/metadata
@@ -212,6 +226,7 @@ functions:
           method: post
           cors: true
 
+  # TODO: consolidate with deleteMeeting
   endTeacherSession:
     handler: handler.endTeacherSession
     events:
@@ -221,7 +236,7 @@ functions:
           cors: true
 
   getCourseStudents:
-    handler: handler.getClassStudents
+    handler: handler.getCourseStudents
     events:
       - http:
           path: courses/{courseId}/students
@@ -229,7 +244,7 @@ functions:
           cors: true
 
   joinCourse:
-    handler: handler.joinClass
+    handler: handler.joinCourse
     events:
       - http:
           path: courses/{courseId}/join

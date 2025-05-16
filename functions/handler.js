@@ -3,14 +3,12 @@ const {
   CreateMeetingCommand,
   CreateAttendeeCommand,
   GetMeetingCommand,
-  ListMeetingsCommand,
   DeleteMeetingCommand,
 } = require("@aws-sdk/client-chime-sdk-meetings");
 
 const { CognitoJwtVerifier } = require("aws-jwt-verify");
 
 const {
-  CognitoIdentityServiceProvider,
   CognitoIdentityProviderClient,
   ListUsersCommand,
   AdminCreateUserCommand,
@@ -144,17 +142,6 @@ const verifyRole = async (event, requiredRoles) => {
 
 const assignUserRole = async (username, role) => {
   try {
-    // await cognito.adminUpdateUserAttributes({
-    //   UserPoolId: USER_POOL_ID,
-    //   Username: username,
-    //   UserAttributes: [
-    //     {
-    //       Name: "custom:role",
-    //       Value: role,
-    //     },
-    //   ],
-    // });
-
     const command = new AdminUpdateUserAttributesCommand({
       UserPoolId: USER_POOL_ID,
       Username: username,
@@ -198,6 +185,79 @@ const verifyCourseAccess = async (userId, userRole, courseId) => {
   }
 };
 
+module.exports.updateCourseTeacher = async (event) => {
+  try {
+    const userData = await authenticate(event);
+
+    // Verify SUPER_ADMIN role
+    if (userData["custom:role"] !== ROLES.SUPER_ADMIN) {
+      return errorResponse("Only SUPER_ADMIN can update course teachers", 403);
+    }
+
+    const { courseId } = event.pathParameters;
+    const { teacherId } = JSON.parse(event.body);
+
+    if (!courseId || !teacherId) {
+      return errorResponse("Both courseId and teacherId are required", 400);
+    }
+
+    // Get teacher details from Cognito
+    const command = new AdminGetUserCommand({
+      Username: teacherId,
+      UserPoolId: USER_POOL_ID,
+    });
+    const teacher = await cognito.send(command);
+
+    const firstName =
+      teacher.UserAttributes.find((attr) => attr.Name === "given_name")
+        ?.Value || "";
+    const lastName =
+      teacher.UserAttributes.find((attr) => attr.Name === "family_name")
+        ?.Value || "";
+
+    // Update the course in DynamoDB
+    await dynamoDB.updateItem({
+      TableName: "Courses",
+      Key: {
+        courseId: { S: courseId },
+      },
+      UpdateExpression:
+        "SET teacherId = :teacherId, teacherName = :teacherName",
+      ExpressionAttributeValues: {
+        ":teacherId": { S: teacherId },
+        ":teacherName": { S: `${firstName} ${lastName}` },
+      },
+    });
+
+    return successResponse({ message: "Course teacher updated successfully" });
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
+module.exports.processEvent = async (event) => {
+  console.log("Received Chime event:", JSON.stringify(event, null, 2));
+
+  // Add your logic here (e.g., process meeting ended events)
+  if (event.detail.eventType === "chime:MeetingEnded") {
+    await dynamoDB.deleteItem({
+      TableName: "Meetings",
+      Key: {
+        meetingId: { S: event.detail.meetingId },
+      },
+    });
+
+    console.log("Meeting ended:", event.detail.meetingId);
+    return {
+      meetingId: event.detail.meetingId,
+      status: "deleted",
+      reason: "auto-deleted by Chime",
+    };
+  }
+
+  return { status: "success" };
+};
+
 // TODO: bad reques handling
 module.exports.createMeeting = async (event) => {
   try {
@@ -229,22 +289,45 @@ module.exports.createMeeting = async (event) => {
 
     const meeting = await chimeClient.send(createMeetingCommand);
 
-    // Store meeting in DynamoDB
-    await dynamoDB.putItem({
-      TableName: "Meetings",
-      Item: {
-        meetingId: { S: meeting.Meeting.MeetingId },
-        courseId: { S: courseId },
-        createdBy: { S: userData.sub },
-        createdAt: { S: new Date().toISOString() },
-      },
-    });
-
     // Create attendee for the teacher
     const attendee = await createAttendee(
       meeting.Meeting.MeetingId,
       userData.sub
     );
+    // Check if there's already an active meeting for this course
+    const existingMeetings = await dynamoDB.query({
+      TableName: "Meetings",
+      IndexName: "ClassIndex",
+      KeyConditionExpression: "courseId = :courseId",
+      ExpressionAttributeValues: {
+        ":courseId": { S: courseId },
+      },
+      ScanIndexForward: false,
+      Limit: 1,
+    });
+
+    if (existingMeetings.Items.length <= 0) {
+      await dynamoDB.putItem({
+        TableName: "Meetings",
+        Item: {
+          meetingId: { S: meeting.Meeting.MeetingId },
+          courseId: { S: courseId },
+          createdBy: { S: userData.sub },
+          createdAt: { S: new Date().toISOString() },
+        },
+      });
+    } else {
+      await dynamoDB.updateItem({
+        TableName: "Meetings",
+        Key: {
+          courseId: { S: courseId },
+        },
+        UpdateExpression: "SET meetingId = :meetingId",
+        ExpressionAttributeValues: {
+          ":meetingId": { S: meeting.Meeting.MeetingId },
+        },
+      });
+    }
 
     return successResponse({ meeting, attendee });
   } catch (error) {
@@ -290,27 +373,6 @@ module.exports.joinMeeting = async (event) => {
   }
 };
 
-module.exports.deleteMeeting = async (event) => {
-  try {
-    const { meetingId } = JSON.parse(event?.body ?? "{}");
-
-    if (!meetingId) {
-      return errorResponse("MeetingId is required", 400);
-    }
-
-    const deleteMeetingCommand = new DeleteMeetingCommand({
-      MeetingId: meetingId,
-    });
-
-    await chimeClient.send(deleteMeetingCommand);
-
-    return successResponse({ message: "Meeting deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting meeting:", error);
-    return errorResponse("Failed to delete meeting");
-  }
-};
-
 module.exports.assignRole = async (event) => {
   try {
     // Verify that the requester is a SUPER_ADMIN
@@ -333,7 +395,7 @@ module.exports.assignRole = async (event) => {
 
 module.exports.createCourse = async (event) => {
   try {
-    const user = await verifyRole(event, ["SUPER_ADMIN"]);
+    await verifyRole(event, ["SUPER_ADMIN"]);
     const { courseName, teacherId } = JSON.parse(event.body);
 
     // Validate required fields
@@ -439,45 +501,50 @@ module.exports.getCourses = async (event) => {
 
     switch (userData["custom:role"]) {
       case "SUPER_ADMIN":
-        const allCourses = await dynamoDB.scan({
-          TableName: "Courses",
-        });
-        items = allCourses.Items;
+        items = (
+          await dynamoDB.scan({
+            TableName: "Courses",
+          })
+        ).Items;
+
         break;
 
       case "TEACHER":
-        const teacherCourses = await dynamoDB.query({
-          TableName: "Courses",
-          IndexName: "TeacherIndex",
-          KeyConditionExpression: "teacherId = :teacherId",
-          ExpressionAttributeValues: {
-            ":teacherId": { S: userData.sub },
-          },
-        });
-        items = teacherCourses.Items;
+        items = (
+          await dynamoDB.query({
+            TableName: "Courses",
+            IndexName: "TeacherIndex",
+            KeyConditionExpression: "teacherId = :teacherId",
+            ExpressionAttributeValues: {
+              ":teacherId": { S: userData.sub },
+            },
+          })
+        ).Items;
         break;
 
       case "STUDENT":
-        const enrollments = await dynamoDB.scan({
-          TableName: "Enrollments",
-          FilterExpression: "userId = :userId",
-          ExpressionAttributeValues: {
-            ":userId": { S: userData.sub },
-          },
-        });
+        {
+          const enrollments = await dynamoDB.scan({
+            TableName: "Enrollments",
+            FilterExpression: "userId = :userId",
+            ExpressionAttributeValues: {
+              ":userId": { S: userData.sub },
+            },
+          });
 
-        // Get course details for each enrollment
-        items = await Promise.all(
-          enrollments.Items.map(async (enrollment) => {
-            const courseData = await dynamoDB.getItem({
-              TableName: "Courses",
-              Key: {
-                courseId: { S: enrollment.courseId.S },
-              },
-            });
-            return courseData.Item;
-          })
-        );
+          // Get course details for each enrollment
+          items = await Promise.all(
+            enrollments.Items.map(async (enrollment) => {
+              const courseData = await dynamoDB.getItem({
+                TableName: "Courses",
+                Key: {
+                  courseId: { S: enrollment.courseId.S },
+                },
+              });
+              return courseData.Item;
+            })
+          );
+        }
         break;
     }
 
@@ -522,12 +589,7 @@ module.exports.getCourses = async (event) => {
   }
 };
 
-// admin fugu
-// student john
-// teache lith
-
 // Add after getCourses endpoint
-
 module.exports.getCourseDetails = async (event) => {
   try {
     const userData = await authenticate(event);
@@ -706,64 +768,6 @@ module.exports.listUsers = async (event) => {
     return successResponse(formattedUsers);
   } catch (error) {
     return errorResponse(error);
-  }
-};
-
-module.exports.checkMeetingStatus = async (event) => {
-  try {
-    console.log("Checking meeting statuses...");
-
-    // Get all meetings from DynamoDB
-    const meetingsData = await dynamoDB.scan({
-      TableName: "Meetings",
-    });
-
-    const results = await Promise.all(
-      meetingsData.Items.map(async (item) => {
-        const meetingId = item.meetingId.S;
-        try {
-          // Check if meeting still exists in Chime
-          const getMeetingCommand = new GetMeetingCommand({
-            MeetingId: meetingId,
-          });
-
-          await chimeClient.send(getMeetingCommand);
-          return { meetingId, status: "active" };
-        } catch (error) {
-          if (error.name === "NotFoundException") {
-            // Meeting was automatically deleted by AWS Chime
-            console.log(
-              `Meeting ${meetingId} no longer exists in Chime, cleaning up DynamoDB`
-            );
-
-            // Delete from DynamoDB
-            await dynamoDB.deleteItem({
-              TableName: "Meetings",
-              Key: {
-                meetingId: { S: meetingId },
-              },
-            });
-
-            return {
-              meetingId,
-              status: "deleted",
-              reason: "auto-deleted by Chime",
-            };
-          }
-
-          return { meetingId, status: "error", error: error.message };
-        }
-      })
-    );
-
-    return successResponse({
-      message: "Meeting status check completed",
-      processed: results.length,
-      results,
-    });
-  } catch (error) {
-    console.error("Error checking meeting status:", error);
-    return errorResponse("Failed to check meeting status");
   }
 };
 
