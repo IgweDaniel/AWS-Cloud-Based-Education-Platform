@@ -22,46 +22,52 @@ import {
 } from "lucide-react";
 import { ClipLoader } from "react-spinners";
 
+// Define department & schedule data based on classItem
+const departmentMap = {
+  "Introduction to Computer Science": "Computer Science",
+  "Advanced Mathematics": "Mathematics",
+  "Business Ethics": "Business",
+  "Physics 101": "Sciences",
+  "Modern Literature": "Liberal Arts",
+  "Data Structures": "Computer Science",
+  "Financial Accounting": "Business",
+};
+
+const scheduleMap = {
+  "Introduction to Computer Science": "Mon/Wed/Fri 10:00-11:30 AM",
+  "Advanced Mathematics": "Tue/Thu 1:00-2:30 PM",
+  "Business Ethics": "Mon/Wed 3:00-4:30 PM",
+  "Physics 101": "Mon/Wed/Fri 9:00-10:30 AM",
+  "Modern Literature": "Tue/Thu 11:00-12:30 PM",
+  "Data Structures": "Wed/Fri 2:00-3:30 PM",
+  "Financial Accounting": "Tue/Thu 4:00-5:30 PM",
+};
+
 const ClassCard = ({ classItem, userRole }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // Define department & schedule data based on classItem
-  const departmentMap = {
-    "Introduction to Computer Science": "Computer Science",
-    "Advanced Mathematics": "Mathematics",
-    "Business Ethics": "Business",
-    "Physics 101": "Sciences",
-    "Modern Literature": "Liberal Arts",
-    "Data Structures": "Computer Science",
-    "Financial Accounting": "Business",
-  };
-
-  const scheduleMap = {
-    "Introduction to Computer Science": "Mon/Wed/Fri 10:00-11:30 AM",
-    "Advanced Mathematics": "Tue/Thu 1:00-2:30 PM",
-    "Business Ethics": "Mon/Wed 3:00-4:30 PM",
-    "Physics 101": "Mon/Wed/Fri 9:00-10:30 AM",
-    "Modern Literature": "Tue/Thu 11:00-12:30 PM",
-    "Data Structures": "Wed/Fri 2:00-3:30 PM",
-    "Financial Accounting": "Tue/Thu 4:00-5:30 PM",
-  };
-
   // Get department & schedule or use defaults
-  const department = departmentMap[classItem.className] || "General Studies";
-  const schedule = scheduleMap[classItem.className] || "Schedule TBD";
+  const department = departmentMap[classItem.courseName] || "General Studies";
+  const schedule = scheduleMap[classItem.courseName] || "Schedule TBD";
 
   const handleJoinMeeting = async () => {
     setLoading(true);
     try {
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.join(classItem.classId),
+        ENDPOINTS.classes.join(classItem.courseId),
         {
           method: "GET",
         }
       );
       const data = await response.json();
-      window.location.href = data.joinUrl;
+      // `/classes/${classId}/meeting/${data.meeting.Meeting.MeetingId}`
+      console.log({ data });
+
+      // window.location.href = ``;
+      navigate(
+        `/courses/${classItem.courseId}/meeting/${data.meeting.Meeting.MeetingId}`
+      );
     } catch (error) {
       console.error("Error joining class:", error);
     } finally {
@@ -70,7 +76,7 @@ const ClassCard = ({ classItem, userRole }) => {
   };
 
   const handleViewDetails = () => {
-    navigate(`/classes/${classItem.classId}`);
+    navigate(`/courses/${classItem.courseId}`);
   };
 
   // Generate a color seed based on the department name for consistent department coloring
@@ -98,9 +104,9 @@ const ClassCard = ({ classItem, userRole }) => {
         <div className="flex justify-between items-start">
           <CardTitle
             className="text-xl font-semibold line-clamp-2"
-            title={classItem.className}
+            title={classItem.courseName}
           >
-            {classItem.className}
+            {classItem.courseName}
           </CardTitle>
           {classItem.activeMeeting && (
             <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
@@ -161,7 +167,7 @@ const ClassCard = ({ classItem, userRole }) => {
         {!classItem.activeMeeting && userRole === "TEACHER" && (
           <Button
             variant="outline"
-            onClick={() => navigate(`/classes/${classItem.classId}/start`)}
+            onClick={() => navigate(`/classes/${classItem.courseId}/start`)}
             className="w-full"
           >
             <Video className="h-4 w-4 mr-2" />

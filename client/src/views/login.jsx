@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { fetchUserAttributes, getCurrentUser, signIn } from "aws-amplify/auth";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
@@ -11,9 +11,9 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "./ui/card";
+} from "../components/ui/card";
 
-import { Alert, AlertDescription } from "./ui/alert";
+import { Alert, AlertDescription } from "../components/ui/alert";
 import {
   Form,
   FormControl,
@@ -21,7 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "./ui/form";
+} from "../components/ui/form";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { ClipLoader } from "react-spinners";

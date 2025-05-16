@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Login from "../components/Login";
+import Login from "./login";
 import { useAuth } from "../context/auth";
 import { Button } from "@/components/ui/button";
 import {

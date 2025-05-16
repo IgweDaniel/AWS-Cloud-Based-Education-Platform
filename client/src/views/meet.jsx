@@ -22,118 +22,15 @@ import { FcEndCall } from "react-icons/fc";
 import { authenticatedFetch } from "../utils/fetch";
 import { ENDPOINTS } from "../constants";
 
+// UI components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
 const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
 const deviceController = new DefaultDeviceController(logger);
 
-const styles = {
-  container: {
-    minHeight: "100vh",
-    width: "100vw",
-    backgroundColor: "#202124",
-    color: "#fff",
-    position: "relative",
-    overflow: "hidden",
-  },
-  header: {
-    position: "absolute",
-    top: "1rem",
-    left: "1rem",
-    right: "1rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  meetingInfo: {
-    fontSize: "clamp(0.875rem, 2vw, 1rem)",
-    padding: "0.5rem 1rem",
-    backgroundColor: "rgba(60, 64, 67, 0.8)",
-    borderRadius: "8px",
-  },
-  videoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
-    gap: "1rem",
-    padding: "1rem",
-    height: "100vh",
-    paddingBottom: "6rem",
-  },
-  videoTile: {
-    backgroundColor: "#3c4043",
-    borderRadius: "8px",
-    overflow: "hidden",
-    aspectRatio: "16/9",
-    position: "relative",
-  },
-  localVideo: {
-    position: "fixed",
-    bottom: "6rem",
-    right: "1rem",
-    width: "clamp(120px, 20vw, 240px)",
-    aspectRatio: "16/9",
-    borderRadius: "8px",
-    overflow: "hidden",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-    zIndex: 20,
-  },
-  controls: {
-    position: "fixed",
-    bottom: "1rem",
-    left: "50%",
-    transform: "translateX(-50%)",
-    display: "flex",
-    gap: "0.5rem",
-    backgroundColor: "rgba(32, 33, 36, 0.95)",
-    padding: "0.75rem",
-    borderRadius: "2rem",
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-    zIndex: 30,
-    "@media (maxWidth: 480px)": {
-      width: "calc(100% - 2rem)",
-      justifyContent: "center",
-    },
-  },
-  controlButton: {
-    width: "50px",
-    height: "50px",
-    borderRadius: "50%",
-    border: "none",
-    backgroundColor: "#3c4043",
-    color: "#fff",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    // fontSize: "1.25rem",
-    transition: "background-color 0.2s ease",
-    "&:hover": {
-      backgroundColor: "#4a4a4a",
-    },
-    "&.danger": {
-      backgroundColor: "#ea4335",
-    },
-    "&.danger:hover": {
-      backgroundColor: "#dc3626",
-    },
-  },
-  loadingOverlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(32, 33, 36, 0.9)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 100,
-  },
-  loadingText: {
-    fontSize: "clamp(1.25rem, 3vw, 1.5rem)",
-    color: "#fff",
-  },
-};
-
+// TODO: listen for meeting ended event and redirect
 const Meet = () => {
   const { classId, meetingId } = useParams();
   const navigate = useNavigate();
@@ -147,48 +44,6 @@ const Meet = () => {
   const videoGridRef = useRef(null);
   const localVideoRef = useRef(null);
   const [localTileID, setLocalTileID] = useState(null);
-
-  const checkMeetingStatus = async (meetingId) => {
-    try {
-      const response = await authenticatedFetch(
-        `/meetings/${meetingId}/status`
-      );
-      const data = await response.json();
-
-      if (!data.active) {
-        // Meeting no longer exists
-        // Redirect user or show appropriate message
-        navigate("/dashboard", {
-          state: { message: "The meeting has ended" },
-        });
-      }
-
-      return data.active;
-    } catch (error) {
-      console.error("Error checking meeting status:", error);
-      return false;
-    }
-  };
-
-  // Use in component with useEffect
-  // FIXME: check if this is necce
-  // useEffect(() => {
-  //   let statusInterval;
-
-  //   if (meetingId) {
-  //     // Check status immediately
-  //     checkMeetingStatus(meetingId);
-
-  //     // Then check every minute
-  //     statusInterval = setInterval(() => {
-  //       checkMeetingStatus(meetingId);
-  //     }, 60000);
-  //   }
-
-  //   return () => {
-  //     if (statusInterval) clearInterval(statusInterval);
-  //   };
-  // }, [meetingId]);
 
   useEffect(() => {
     if (!meetingSession) {
@@ -450,96 +305,119 @@ const Meet = () => {
     // Cleanup function
   }, [videoTiles, meetingSession]);
 
+  // --- UI ---
   if (error) {
     return (
-      <div style={styles.container}>
-        <div style={styles.error}>
-          <h2>Error</h2>
-          <p>{error}</p>
-          <button
-            onClick={() => navigate("/dashboard")}
-            style={styles.controlButton}
-          >
-            Return to Dashboard
-          </button>
-        </div>
+      <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center">
+        <Card className="bg-destructive text-destructive-foreground border-destructive shadow-lg">
+          <CardHeader>
+            <CardTitle>Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={() => navigate("/dashboard")} variant="outline">
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <button
-          onClick={() => {
-            cleanupMeeting();
-            navigate("/dashboard");
-          }}
-          style={styles.controlButton}
-          title="Return to Dashboard"
-        >
-          Back
-        </button>
-        <div style={styles.meetingInfo}>
-          <div>Meeting ID: {meetingId}</div>
-          <div style={{ fontSize: "0.875em", opacity: 0.8 }}>
-            {user?.role === "TEACHER" ? "Teaching" : "Attending"} Class
-          </div>
+    <div className="min-h-screen w-full bg-background text-foreground relative overflow-hidden">
+      {/* Header */}
+      <header className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs px-3 py-1">
+            Meeting ID: {meetingId}
+          </Badge>
+          <span className="text-muted-foreground text-xs ml-2">
+            Class: {classId}
+          </span>
         </div>
-      </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">
+            {user?.firstName} {user?.lastName}
+          </span>
+        </div>
+      </header>
 
-      <div ref={videoGridRef} style={styles.videoGrid}>
-        {/* Video tiles will be added here dynamically */}
-      </div>
+      {/* Video Grid */}
+      <main className="pt-20 pb-32 px-2 md:px-8">
+        <Card className="w-full max-w-6xl mx-auto bg-card/80 shadow-lg border border-border">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <FaVideo className="text-primary" />
+              Live Meeting
+            </CardTitle>
+            {isLoading && (
+              <Badge variant="secondary" className="animate-pulse">
+                Connecting…
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div
+              ref={videoGridRef}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[40vh]"
+            >
+              {/* Render remote video tiles here dynamically */}
+            </div>
+            {/* Local video preview */}
+            <div className="fixed bottom-32 right-8 w-56 max-w-xs aspect-video rounded-lg overflow-hidden shadow-lg z-20 bg-muted border border-border">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute bottom-2 left-2 bg-background/80 text-xs px-2 py-0.5 rounded">
+                You
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
 
-      <div style={styles.localVideo}>
-        <video
-          ref={localVideoRef}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          autoPlay
-          playsInline
-          muted
-        />
-      </div>
-
-      <div style={styles.controls}>
-        <button
-          onClick={() => toggleAudio()}
-          style={styles.controlButton}
-          title={isMuted ? "Unmute" : "Mute"}
+      {/* Controls */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-3 bg-card/95 px-6 py-3 rounded-2xl shadow-lg z-30 border border-border">
+        <Button
+          variant={isMuted ? "outline" : "default"}
+          size="icon"
+          onClick={toggleAudio}
+          aria-label={isMuted ? "Unmute" : "Mute"}
         >
-          {isMuted ? (
-            <FaMicrophone size={30} color="#fff" />
-          ) : (
-            <FaMicrophoneSlash size={30} color="#fff" />
-          )}
-        </button>
-        <button
-          onClick={() => toggleVideo()}
-          style={styles.controlButton}
-          title={isVideoOff ? "Turn on camera" : "Turn off camera"}
+          {isMuted ? <FaMicrophoneSlash /> : <FaMicrophone />}
+        </Button>
+        <Button
+          variant={isVideoOff ? "outline" : "default"}
+          size="icon"
+          onClick={toggleVideo}
+          aria-label={isVideoOff ? "Turn on video" : "Turn off video"}
         >
-          {isVideoOff ? (
-            <FaVideo size={20} color="#fff" />
-          ) : (
-            <FaVideoSlash size={20} color="#fff" />
-          )}
-        </button>
-        <button
+          {isVideoOff ? <FaVideoSlash /> : <FaVideo />}
+        </Button>
+        <Button
+          variant="destructive"
+          size="icon"
           onClick={async () => {
             await cleanupMeeting();
             navigate("/");
           }}
-          style={{ ...styles.controlButton, ...styles.danger }}
-          title="Leave meeting"
+          aria-label="Leave meeting"
         >
-          <FcEndCall size={20} color="#fff" />
-        </button>
+          <FcEndCall className="text-lg" />
+        </Button>
       </div>
 
+      {/* Loading Overlay */}
       {isLoading && (
-        <div style={styles.loadingOverlay}>
-          <div style={styles.loadingText}>Joining meeting...</div>
+        <div className="fixed inset-0 bg-background/90 flex items-center justify-center z-50">
+          <span className="text-xl font-semibold text-primary animate-pulse">
+            Connecting to meeting…
+          </span>
         </div>
       )}
     </div>

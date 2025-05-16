@@ -2,7 +2,7 @@
 export const API_BASE_URL = import.meta.env.DEV
   ? "/api"
   : import.meta.env.VITE_API_BASE_URL ||
-    "https://8dhkivuce0.execute-api.us-east-1.amazonaws.com/dev";
+    "https://v0z6x8yxsl.execute-api.us-east-1.amazonaws.com/dev";
 
 export const ENDPOINTS = {
   meetings: {
@@ -16,7 +16,7 @@ export const ENDPOINTS = {
     details: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
     enroll: (courseId) => `${API_BASE_URL}/courses/${courseId}/enroll`,
     removeStudent: (courseId) => `${API_BASE_URL}/courses/${courseId}/student`,
-    update: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
+    update: (courseId) => `${API_BASE_URL}/courses/${courseId}/teacher`,
     metadata: `${API_BASE_URL}/courses/metadata`,
     teacher: {
       list: `${API_BASE_URL}/courses/teacher`,

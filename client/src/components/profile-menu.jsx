@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
 import { Button } from "@/components/ui/button";
-import { User, LogOut, Settings, ChevronDown } from "lucide-react";
+import { User, LogOut, ChevronDown } from "lucide-react";
 
 const ProfileMenu = () => {
   const { logout, user } = useAuth();
@@ -48,11 +48,11 @@ const ProfileMenu = () => {
         <div className="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-lg border border-border z-50">
           <div className="py-2">
             <button
-              onClick={() => handleNavigate("/settings")}
+              onClick={() => handleNavigate("/profile")}
               className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center"
             >
               <User className="h-4 w-4 mr-2" />
-              Account Settings
+              View Profile
             </button>
             <hr className="my-1 border-border" />
             <button
