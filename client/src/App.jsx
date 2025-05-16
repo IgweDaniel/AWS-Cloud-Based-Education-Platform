@@ -15,18 +15,18 @@ import PrivateRoute from "./components/private-route";
 import Login from "./views/login";
 
 import Layout from "./components/layout";
-import Dashboard from "@/views/Dashboard";
-import ProfilePage from "@/views/Profile";
+import Dashboard from "@/views/cashboard";
+import ProfilePage from "@/views/profile";
 
-import Courses from "@/views/Courses";
-import CourseDetail from "@/views/CourseDetail";
-import CreateUser from "@/views/admin/CreateUser";
-import CreateCourse from "@/views/admin/CreateCourse";
-import AssignTeacher from "@/views/admin/AssignTeacher";
-import UsersList from "@/views/admin/UsersList";
+import Courses from "@/views/courses";
+import CourseDetail from "@/views/course-detail";
+import CreateUser from "@/views/admin/create-user";
+import CreateCourse from "@/views/admin/create-course";
+import AssignTeacher from "@/views/admin/assign-teacher";
+import UsersList from "@/views/admin/users-list";
 // import ManageStudents from "@/views/admin/ManageStudents";
-import StartSession from "@/views/StartSession";
-import SessionsList from "./views/SessionsList";
+import StartSession from "@/views/start-session";
+import SessionsList from "./views/sessions-list";
 
 Amplify.configure(awsconfig);
 
