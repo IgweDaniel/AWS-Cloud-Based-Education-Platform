@@ -438,9 +438,21 @@ const CourseDetail = () => {
 
       {/* Content Tabs - Simplified to focus on live meeting */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid grid-cols-2 md:w-auto w-full">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="resources">Resources</TabsTrigger>
+        <TabsList className="grid grid-cols-2 md:w-auto w-full bg-card border rounded-md p-1">
+          <TabsTrigger
+            value="overview"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium"
+          >
+            <BookOpen className="h-4 w-4 mr-2" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="resources"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-medium"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Resources
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab - Focused on meeting status */}
