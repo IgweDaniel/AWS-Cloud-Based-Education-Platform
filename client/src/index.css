@@ -171,3 +171,7 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600;
   }
 }
+
+button {
+  cursor: pointer;
+}

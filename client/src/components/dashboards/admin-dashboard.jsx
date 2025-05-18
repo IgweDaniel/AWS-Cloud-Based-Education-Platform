@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Users, Activity, Calendar, Zap } from "lucide-react";
-import { authenticatedFetch } from "@/utils/fetch";
-import { ENDPOINTS } from "@/constants";
+import { authenticatedFetch } from "@/lib/fetch";
+import { ENDPOINTS, ROLES, ROUTES } from "@/constants";
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -30,9 +30,14 @@ export const AdminDashboard = () => {
         const classes = await classesResponse.json();
         const users = await usersResponse.json();
 
-        const students = users.filter((user) => user.role === "STUDENT").length;
-        const teachers = users.filter((user) => user.role === "TEACHER").length;
-        const activeSessions = classes.filter((c) => c.activeMeeting).length;
+        // TODO: filter on the handler with pagination
+        const students = users.filter(
+          (user) => user.role === ROLES.STUDENT
+        ).length;
+        const teachers = users.filter(
+          (user) => user.role === ROLES.TEACHER
+        ).length;
+        const activeSessions = classes.filter((c) => cactiveMeetingId).length;
 
         setStats({
           totalCourses: classes.length,
@@ -145,7 +150,7 @@ export const AdminDashboard = () => {
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <Button
-            onClick={() => navigate("/admin/create-course")}
+            onClick={() => navigate(ROUTES.ADMIN_CREATE_COURSE)}
             variant="outline"
             className="h-auto py-6 flex flex-col items-center justify-center gap-2 text-foreground hover:bg-primary/5 hover:text-primary"
           >
@@ -157,7 +162,7 @@ export const AdminDashboard = () => {
           </Button>
 
           <Button
-            onClick={() => navigate("/admin/create-user")}
+            onClick={() => navigate(ROUTES.ADMIN_CREATE_USER)}
             variant="outline"
             className="h-auto py-6 flex flex-col items-center justify-center gap-2 text-foreground hover:bg-primary/5 hover:text-primary"
           >
@@ -169,7 +174,7 @@ export const AdminDashboard = () => {
           </Button>
 
           <Button
-            onClick={() => navigate("/admin/assign-teacher")}
+            onClick={() => navigate(ROUTES.ADMIN_ASSIGN_TEACHER)}
             variant="outline"
             className="h-auto py-6 flex flex-col items-center justify-center gap-2 text-foreground hover:bg-primary/5 hover:text-primary"
           >
@@ -181,7 +186,7 @@ export const AdminDashboard = () => {
           </Button>
 
           <Button
-            onClick={() => navigate("/admin/users")}
+            onClick={() => navigate(ROUTES.ADMIN_USERS_LIST)}
             variant="outline"
             className="h-auto py-6 flex flex-col items-center justify-center gap-2 text-foreground hover:bg-primary/5 hover:text-primary"
           >

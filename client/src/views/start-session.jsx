@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../utils/fetch";
-import { ENDPOINTS } from "../constants";
+import { authenticatedFetch } from "../lib/fetch";
+import { ENDPOINTS, getRouteWithParams, ROUTES } from "../constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipLoader } from "react-spinners";
@@ -41,7 +41,10 @@ const StartSession = () => {
       });
       const data = await response.json();
       navigate(
-        `/classes/${courseId}/meeting/${data.meeting.Meeting.MeetingId}`
+        getRouteWithParams(ROUTES.MEET, {
+          courseId,
+          meetingId: data.meeting.Meeting.MeetingId,
+        })
       );
     } catch (err) {
       setError("Failed to start session");

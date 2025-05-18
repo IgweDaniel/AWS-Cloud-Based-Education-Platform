@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Login from "./login";
 import { useAuth } from "../context/auth";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,13 @@ import {
   Users,
   Monitor,
   Calendar,
-  Award,
   ArrowRight,
-  Globe,
   Check,
   BarChart,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ROUTES } from "@/constants";
 
 export const Home = () => {
   const { user, loading } = useAuth();
@@ -24,19 +23,7 @@ export const Home = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      switch (user.role) {
-        case "TEACHER":
-          navigate("/teacher-dashboard");
-          break;
-        case "STUDENT":
-          navigate("/student-dashboard");
-          break;
-        case "SUPER_ADMIN":
-          navigate("/admin-dashboard");
-          break;
-        default:
-          navigate("/classes");
-      }
+      navigate(ROUTES.HOME);
     }
   }, [user, loading, navigate]);
 
@@ -66,18 +53,18 @@ export const Home = () => {
               <Button
                 variant="outline"
                 className="mr-2"
-                onClick={() => navigate("/about")}
+                onClick={() => navigate(ROUTES.ABOUT)}
               >
                 About
               </Button>
               <Button
                 variant="outline"
                 className="mr-2"
-                onClick={() => navigate("/contact")}
+                onClick={() => navigate(ROUTES.CONTACT)}
               >
                 Contact
               </Button>
-              <Button onClick={() => navigate("/login")}>Sign In</Button>
+              <Button onClick={() => navigate(ROUTES.LOGIN)}>Sign In</Button>
             </div>
           </div>
 
@@ -97,13 +84,13 @@ export const Home = () => {
                 modern education.
               </p>
               <div className="space-x-4">
-                <Button size="lg" onClick={() => navigate("/login")}>
+                <Button size="lg" onClick={() => navigate(ROUTES.LOGIN)}>
                   Get Started <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => navigate("/tour")}
+                  onClick={() => navigate(ROUTES.TOUR)}
                 >
                   Take a Tour
                 </Button>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/auth";
-import { authenticatedFetch } from "../../utils/fetch";
-import { ENDPOINTS } from "../../constants";
+import { authenticatedFetch } from "../../lib/fetch";
+import { ENDPOINTS, getRouteWithParams, ROUTES } from "../../constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import {
   Video,
 } from "lucide-react";
 
-export const TeacherDashboard = () => {
+export const LecturerDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
@@ -33,29 +33,34 @@ export const TeacherDashboard = () => {
       try {
         setLoading(true);
         // Fetch the teacher's classes
-        const classesResponse = await authenticatedFetch(
-          ENDPOINTS.classes.teacher.list
-        );
-        const classesData = await classesResponse.json();
+        // Run both fetches in parallel
+        const [classesResponse, activeSessionsResponse] = await Promise.all([
+          authenticatedFetch(ENDPOINTS.classes.teacher.list),
+          authenticatedFetch(ENDPOINTS.classes.teacher.activeSessions),
+        ]);
 
-        // Fetch active sessions
-        const activeSessionsResponse = await authenticatedFetch(
-          ENDPOINTS.classes.teacher.activeSessions
-        );
-        const activeSessionsData = await activeSessionsResponse.json();
-
+        const [classesData, activeSessionsData] = await Promise.all([
+          classesResponse.json(),
+          activeSessionsResponse.json(),
+        ]);
         setClasses(classesData);
         setActiveSessions(activeSessionsData || []);
 
         // Calculate total students
-        let totalStudents = 0;
-        for (const classItem of classesData) {
-          const studentsResponse = await authenticatedFetch(
-            ENDPOINTS.classes.teacher.students(classItem.classId)
-          );
-          const studentsData = await studentsResponse.json();
-          totalStudents += studentsData?.length || 0;
-        }
+        // Run student fetches in parallel for all classes
+        const studentCounts = await Promise.all(
+          classesData.map(async (classItem) => {
+            const studentsResponse = await authenticatedFetch(
+              ENDPOINTS.classes.teacher.students(classItem.courseId)
+            );
+            const studentsData = await studentsResponse.json();
+            return studentsData?.length ?? 0;
+          })
+        );
+        const totalStudents = studentCounts.reduce(
+          (sum, count) => sum + count,
+          0
+        );
 
         setTeachingStats({
           totalCourses: classesData.length,
@@ -72,18 +77,23 @@ export const TeacherDashboard = () => {
     fetchData();
   }, []);
 
-  const handleStartSession = async (classId) => {
+  const handleStartSession = async (courseId) => {
     try {
       setLoading(true);
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.teacher.startSession(classId),
+        ENDPOINTS.classes.teacher.startSession(courseId),
         {
           method: "POST",
         }
       );
       if (response.ok) {
         const data = await response.json();
-        navigate(`/classes/${classId}/meeting/${data.meetingId}`);
+        navigate(
+          getRouteWithParams(ROUTES.MEET, {
+            courseId: courseId,
+            meetingId: data.meetingId,
+          })
+        );
       }
     } catch (error) {
       console.error("Error starting session:", error);
@@ -110,7 +120,7 @@ export const TeacherDashboard = () => {
             <Button
               variant="outline"
               className="border-white/30 hover:bg-white/10 text-black cursor-pointer hover:text-white"
-              onClick={() => navigate("/classes")}
+              onClick={() => navigate(ROUTES.COURSES)}
             >
               Manage All Courses <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
@@ -124,7 +134,7 @@ export const TeacherDashboard = () => {
               <span className="text-white/70 text-sm">Teaching</span>
             </div>
             <p className="text-2xl font-bold">
-              {teachingStats.totalCourses} courses
+              {loading ? "--" : teachingStats.totalCourses} courses
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
@@ -132,7 +142,9 @@ export const TeacherDashboard = () => {
               <Users className="h-5 w-5 mr-2 text-white/70" />
               <span className="text-white/70 text-sm">Students</span>
             </div>
-            <p className="text-2xl font-bold">{teachingStats.totalStudents}</p>
+            <p className="text-2xl font-bold">
+              {loading ? "--" : teachingStats.totalStudents}
+            </p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center mb-2">
@@ -140,7 +152,7 @@ export const TeacherDashboard = () => {
               <span className="text-white/70 text-sm">Active</span>
             </div>
             <p className="text-2xl font-bold">
-              {teachingStats.activeClasses} sessions
+              {loading ? "--" : teachingStats.activeClasses} sessions
             </p>
           </div>
         </div>
@@ -157,7 +169,7 @@ export const TeacherDashboard = () => {
               <Button
                 variant="ghost"
                 className="text-primary"
-                onClick={() => navigate("/classes")}
+                onClick={() => navigate(ROUTES.COURSES)}
               >
                 View All <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
@@ -171,7 +183,7 @@ export const TeacherDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {classes.slice(0, 4).map((classItem) => (
                   <ClassCard
-                    key={classItem.classId}
+                    key={classItem.courseId}
                     classItem={classItem}
                     userRole={user?.role}
                   />
@@ -191,7 +203,7 @@ export const TeacherDashboard = () => {
                   <p className="text-muted-foreground mb-4">
                     You have not been assigned any courses to teach yet.
                   </p>
-                  <Button onClick={() => navigate("/admin/courses")}>
+                  <Button onClick={() => navigate(ROUTES.COURSES)}>
                     View Available Courses
                   </Button>
                 </CardContent>
@@ -209,9 +221,9 @@ export const TeacherDashboard = () => {
                 {activeSessions.length > 0 ? (
                   <div className="divide-y">
                     {activeSessions.map((session) => (
-                      <div key={session.classId} className="p-4">
+                      <div key={session.courseId} className="p-4">
                         <div className="flex flex-wrap items-center justify-between mb-2">
-                          <h4 className="font-medium">{session.className}</h4>
+                          <h4 className="font-medium">{session.courseName}</h4>
                           <Badge variant="success" className="ml-auto">
                             Live Now
                           </Badge>
@@ -224,7 +236,10 @@ export const TeacherDashboard = () => {
                           <Button
                             onClick={() =>
                               navigate(
-                                `/classes/${session.classId}/meeting/${session.meetingId}`
+                                getRouteWithParams(ROUTES.MEET, {
+                                  courseId: session.courseId,
+                                  meetingId: session.meetingId,
+                                })
                               )
                             }
                             className="flex-1"
@@ -234,7 +249,11 @@ export const TeacherDashboard = () => {
                           <Button
                             variant="outline"
                             onClick={() =>
-                              navigate(`/classes/${session.classId}`)
+                              navigate(
+                                getRouteWithParams(ROUTES.COURSE_DETAIL, {
+                                  courseId: session.courseId,
+                                })
+                              )
                             }
                             className="flex-1"
                           >
@@ -280,15 +299,15 @@ export const TeacherDashboard = () => {
               ) : classes.length > 0 ? (
                 classes.slice(0, 5).map((classItem) => (
                   <Button
-                    key={classItem.classId}
-                    onClick={() => handleStartSession(classItem.classId)}
+                    key={classItem.courseId}
+                    onClick={() => handleStartSession(classItem.courseId)}
                     className="w-full justify-start"
                     variant="outline"
-                    disabled={classItem.activeMeeting}
+                    disabled={classItem.activeMeetingId}
                   >
                     <Presentation className="mr-2 h-4 w-4" />
-                    {classItem.className}
-                    {classItem.activeMeeting && (
+                    {classItem.courseName}
+                    {classItem.activeMeetingId && (
                       <Badge variant="outline" className="ml-auto">
                         Live
                       </Badge>
@@ -338,4 +357,4 @@ export const TeacherDashboard = () => {
   );
 };
 
-export default TeacherDashboard;
+export default LecturerDashboard;

@@ -258,121 +258,6 @@ module.exports.processEvent = async (event) => {
   return { status: "success" };
 };
 
-// TODO: bad reques handling
-module.exports.createMeeting = async (event) => {
-  try {
-    const userData = await authenticate(event);
-    const { courseId } = JSON.parse(event.body ?? "{}");
-    if (!courseId) {
-      return errorResponse("CourseId is required", 400);
-    }
-
-    // Verify user is the teacher of the course
-    const courseData = await dynamoDB.getItem({
-      TableName: "Courses",
-      Key: {
-        courseId: { S: courseId },
-      },
-    });
-
-    if (courseData.Item?.teacherId?.S !== userData.sub) {
-      return errorResponse("Only teachers can create meetings", 403);
-    }
-
-    // Create meeting in Chime
-    const createMeetingCommand = new CreateMeetingCommand({
-      ClientRequestToken:
-        "unique-token-" + Math.random().toString(36).substring(7),
-      MediaRegion: "us-east-1",
-      ExternalMeetingId: "meeting-" + Math.random().toString(36).substring(7),
-    });
-
-    const meeting = await chimeClient.send(createMeetingCommand);
-
-    // Create attendee for the teacher
-    const attendee = await createAttendee(
-      meeting.Meeting.MeetingId,
-      userData.sub
-    );
-    // Check if there's already an active meeting for this course
-    const existingMeetings = await dynamoDB.query({
-      TableName: "Meetings",
-      IndexName: "ClassIndex",
-      KeyConditionExpression: "courseId = :courseId",
-      ExpressionAttributeValues: {
-        ":courseId": { S: courseId },
-      },
-      ScanIndexForward: false,
-      Limit: 1,
-    });
-
-    if (existingMeetings.Items.length <= 0) {
-      await dynamoDB.putItem({
-        TableName: "Meetings",
-        Item: {
-          meetingId: { S: meeting.Meeting.MeetingId },
-          courseId: { S: courseId },
-          createdBy: { S: userData.sub },
-          createdAt: { S: new Date().toISOString() },
-        },
-      });
-    } else {
-      await dynamoDB.updateItem({
-        TableName: "Meetings",
-        Key: {
-          courseId: { S: courseId },
-        },
-        UpdateExpression: "SET meetingId = :meetingId",
-        ExpressionAttributeValues: {
-          ":meetingId": { S: meeting.Meeting.MeetingId },
-        },
-      });
-    }
-
-    return successResponse({ meeting, attendee });
-  } catch (error) {
-    return errorResponse(error);
-  }
-};
-
-module.exports.joinMeeting = async (event) => {
-  try {
-    const userData = await authenticate(event);
-    const { meetingId } = JSON.parse(event.body);
-
-    // Get meeting details
-    const meeting = await dynamoDB.getItem({
-      TableName: "Meetings",
-      Key: {
-        meetingId: { S: meetingId },
-      },
-    });
-
-    if (!meeting.Item) {
-      return errorResponse("Meeting not found", 404);
-    }
-
-    const userRole = userData["custom:role"];
-    // Verify course access
-    await verifyCourseAccess(userData.sub, userRole, meeting.Item.courseId.S);
-
-    // Get Chime meeting
-    const getMeetingCommand = new GetMeetingCommand({
-      MeetingId: meetingId,
-    });
-
-    const chimeMeeting = await chimeClient.send(getMeetingCommand);
-    const attendee = await createAttendee(meetingId, userData.sub);
-
-    return successResponse({ meeting: chimeMeeting, attendee });
-  } catch (error) {
-    if (error.name === "NotFoundException") {
-      return errorResponse("Meeting not found", 404);
-    }
-    return errorResponse(error);
-  }
-};
-
 module.exports.assignRole = async (event) => {
   try {
     // Verify that the requester is a SUPER_ADMIN
@@ -395,7 +280,7 @@ module.exports.assignRole = async (event) => {
 
 module.exports.createCourse = async (event) => {
   try {
-    await verifyRole(event, ["SUPER_ADMIN"]);
+    await verifyRole(event, [ROLES.SUPER_ADMIN]);
     const { courseName, teacherId } = JSON.parse(event.body);
 
     // Validate required fields
@@ -455,7 +340,7 @@ module.exports.createCourse = async (event) => {
 module.exports.enrollStudent = async (event) => {
   try {
     // Verify super admin role
-    await verifyRole(event, ["SUPER_ADMIN"]);
+    await verifyRole(event, [ROLES.SUPER_ADMIN]);
 
     const { studentId } = JSON.parse(event.body);
     const { courseId } = event.pathParameters;
@@ -471,7 +356,6 @@ module.exports.enrollStudent = async (event) => {
     const roleAttribute = studentUser.UserAttributes.find(
       (attr) => attr.Name === "custom:role"
     );
-    console.log({ roleAttribute });
 
     if (!roleAttribute || roleAttribute.Value !== ROLES.STUDENT) {
       return errorResponse("User must have STUDENT role to be enrolled", 400);
@@ -486,7 +370,42 @@ module.exports.enrollStudent = async (event) => {
       },
     });
 
-    return successResponse({ message: "Student enrolled successfully" });
+    return successResponse({
+      id: studentId,
+      username: studentId,
+      email: studentUser.UserAttributes.find((attr) => attr.Name === "email")
+        ?.Value,
+      role: roleAttribute,
+      firstName: studentUser.UserAttributes.find(
+        (attr) => attr.Name === "given_name"
+      )?.Value,
+      lastName: studentUser.UserAttributes.find(
+        (attr) => attr.Name === "family_name"
+      )?.Value,
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
+module.exports.unenrollStudent = async (event) => {
+  try {
+    // Verify super admin role
+    await verifyRole(event, [ROLES.SUPER_ADMIN]);
+
+    const { studentId } = JSON.parse(event.body);
+    const { courseId } = event.pathParameters;
+
+    // Delete the enrollment record from the Enrollments table
+    await dynamoDB.deleteItem({
+      TableName: "Enrollments",
+      Key: {
+        courseId: { S: courseId },
+        userId: { S: studentId },
+      },
+    });
+
+    return successResponse({ message: "Student unenrolled successfully" });
   } catch (error) {
     return errorResponse(error);
   }
@@ -500,7 +419,7 @@ module.exports.getCourses = async (event) => {
     console.log(userData["custom:role"]);
 
     switch (userData["custom:role"]) {
-      case "SUPER_ADMIN":
+      case ROLES.SUPER_ADMIN:
         items = (
           await dynamoDB.scan({
             TableName: "Courses",
@@ -509,7 +428,7 @@ module.exports.getCourses = async (event) => {
 
         break;
 
-      case "TEACHER":
+      case ROLES.TEACHER:
         items = (
           await dynamoDB.query({
             TableName: "Courses",
@@ -522,7 +441,7 @@ module.exports.getCourses = async (event) => {
         ).Items;
         break;
 
-      case "STUDENT":
+      case ROLES.STUDENT:
         {
           const enrollments = await dynamoDB.scan({
             TableName: "Enrollments",
@@ -634,6 +553,51 @@ module.exports.getCourseDetails = async (event) => {
       Limit: 1,
     });
 
+    // Get detailed student information for each enrolled student
+    const studentIds = enrollments.Items.map((item) => item.userId.S);
+    let enrolledStudents = [];
+
+    // Only fetch student details if there are enrolled students
+    if (studentIds.length > 0) {
+      // Fetch each student individually using AdminGetUser - more efficient than loading all users
+      const studentPromises = studentIds.map(async (studentId) => {
+        try {
+          const command = new AdminGetUserCommand({
+            Username: studentId,
+            UserPoolId: USER_POOL_ID,
+          });
+
+          const userResult = await cognito.send(command);
+
+          return {
+            id: studentId,
+            username: studentId,
+            email: userResult.UserAttributes.find(
+              (attr) => attr.Name === "email"
+            )?.Value,
+            role: userResult.UserAttributes.find(
+              (attr) => attr.Name === "custom:role"
+            )?.Value,
+            firstName: userResult.UserAttributes.find(
+              (attr) => attr.Name === "given_name"
+            )?.Value,
+            lastName: userResult.UserAttributes.find(
+              (attr) => attr.Name === "family_name"
+            )?.Value,
+          };
+        } catch (error) {
+          console.error(
+            `Error fetching details for student ${studentId}:`,
+            error
+          );
+          // Return basic info if user details can't be fetched
+          return { id: studentId, username: studentId };
+        }
+      });
+
+      enrolledStudents = await Promise.all(studentPromises);
+    }
+
     const item = {
       courseId: courseData.Item.courseId.S,
       courseName: courseData.Item.courseName.S,
@@ -644,8 +608,9 @@ module.exports.getCourseDetails = async (event) => {
     const response = {
       ...item,
       studentCount: enrollments.Items.length,
-      students: enrollments.Items.map((item) => item.userId.S),
-      activeMeeting: meetings.Items[0]?.meetingId.S,
+      students: studentIds, // Keep the original students array for backwards compatibility
+      enrolledStudents: enrolledStudents, // Add the new detailed student information
+      activeMeetingId: meetings.Items[0]?.meetingId.S,
     };
 
     return successResponse(response);
@@ -949,7 +914,7 @@ module.exports.getTeacherCourses = async (event) => {
           createdAt: item.createdAt.S,
           teacherId: item.teacherId.S,
           teacherName: item.teacherName.S,
-          activeMeeting: meetings.Items[0]?.meetingId.S || null,
+          activeMeetingId: meetings.Items[0]?.meetingId.S || null,
           studentCount: enrollments.Items.length,
         };
       })
@@ -1006,6 +971,172 @@ module.exports.getTeacherActiveSessions = async (event) => {
     }
 
     return successResponse(activeSessions);
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
+module.exports.getCourseStudents = async (event) => {
+  try {
+    const userData = await authenticate(event);
+    const { courseId } = event.pathParameters;
+
+    // Verify teacher role or admin role
+    if (
+      userData["custom:role"] !== ROLES.TEACHER &&
+      userData["custom:role"] !== ROLES.SUPER_ADMIN
+    ) {
+      return errorResponse("Insufficient permissions", 403);
+    }
+
+    // If teacher, verify they own the course
+    if (userData["custom:role"] === ROLES.TEACHER) {
+      const courseData = await dynamoDB.getItem({
+        TableName: "Courses",
+        Key: {
+          courseId: { S: courseId },
+        },
+      });
+
+      if (courseData.Item?.teacherId.S !== userData.sub) {
+        return errorResponse(
+          "You are not authorized to access this course",
+          403
+        );
+      }
+    }
+
+    // Get students enrolled in this course
+    const enrollments = await dynamoDB.query({
+      TableName: "Enrollments",
+      KeyConditionExpression: "courseId = :courseId",
+      ExpressionAttributeValues: {
+        ":courseId": { S: courseId },
+      },
+    });
+
+    // Get detailed student info
+    const studentDetails = [];
+
+    for (const enrollment of enrollments.Items) {
+      const studentId = enrollment.userId.S;
+      try {
+        const command = new AdminGetUserCommand({
+          Username: studentId,
+          UserPoolId: USER_POOL_ID,
+        });
+
+        const studentData = await cognito.send(command);
+
+        studentDetails.push({
+          id: studentId,
+          email:
+            studentData.UserAttributes.find((attr) => attr.Name === "email")
+              ?.Value || "",
+          firstName:
+            studentData.UserAttributes.find(
+              (attr) => attr.Name === "given_name"
+            )?.Value || "",
+          lastName:
+            studentData.UserAttributes.find(
+              (attr) => attr.Name === "family_name"
+            )?.Value || "",
+          enrolledAt: enrollment.enrolledAt.S,
+        });
+      } catch (error) {
+        console.error(
+          `Error fetching details for student ${studentId}:`,
+          error
+        );
+        studentDetails.push({
+          id: studentId,
+          error: "Failed to fetch student details",
+        });
+      }
+    }
+
+    return successResponse(studentDetails);
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
+// TODO: bad reques handling
+module.exports.createMeeting = async (event) => {
+  try {
+    const userData = await authenticate(event);
+    const { courseId } = JSON.parse(event.body ?? "{}");
+    if (!courseId) {
+      return errorResponse("CourseId is required", 400);
+    }
+
+    // Verify user is the teacher of the course
+    console.log("getCourse");
+    const courseData = await dynamoDB.getItem({
+      TableName: "Courses",
+      Key: {
+        courseId: { S: courseId },
+      },
+    });
+
+    if (courseData.Item?.teacherId?.S !== userData.sub) {
+      return errorResponse("Only teachers can create meetings", 403);
+    }
+
+    // Create meeting in Chime
+    const createMeetingCommand = new CreateMeetingCommand({
+      ClientRequestToken:
+        "unique-token-" + Math.random().toString(36).substring(7),
+      MediaRegion: "us-east-1",
+      ExternalMeetingId: "meeting-" + Math.random().toString(36).substring(7),
+    });
+
+    const meeting = await chimeClient.send(createMeetingCommand);
+
+    // Create attendee for the teacher
+    const attendee = await createAttendee(
+      meeting.Meeting.MeetingId,
+      userData.sub
+    );
+    // Check if there's already an active meeting for this course
+    console.log("exsiting");
+    const existingMeetings = await dynamoDB.query({
+      TableName: "Meetings",
+      IndexName: "ClassIndex",
+      KeyConditionExpression: "courseId = :courseId",
+      ExpressionAttributeValues: {
+        ":courseId": { S: courseId },
+      },
+      ScanIndexForward: false,
+      Limit: 1,
+    });
+
+    if (existingMeetings.Items.length <= 0) {
+      console.log("putItem");
+      await dynamoDB.putItem({
+        TableName: "Meetings",
+        Item: {
+          meetingId: { S: meeting.Meeting.MeetingId },
+          courseId: { S: courseId },
+          createdBy: { S: userData.sub },
+          createdAt: { S: new Date().toISOString() },
+        },
+      });
+    } else {
+      console.log("updateItem");
+      await dynamoDB.updateItem({
+        TableName: "Meetings",
+        Key: {
+          courseId: { S: courseId },
+        },
+        UpdateExpression: "SET meetingId = :meetingId",
+        ExpressionAttributeValues: {
+          ":meetingId": { S: meeting.Meeting.MeetingId },
+        },
+      });
+    }
+
+    return successResponse({ meeting, attendee });
   } catch (error) {
     return errorResponse(error);
   }
@@ -1167,91 +1298,46 @@ module.exports.endTeacherSession = async (event) => {
   }
 };
 
-module.exports.getCourseStudents = async (event) => {
+module.exports.joinMeeting = async (event) => {
   try {
+    // TODO: use course id and get meeting id
     const userData = await authenticate(event);
-    const { courseId } = event.pathParameters;
+    const { meetingId } = JSON.parse(event.body);
 
-    // Verify teacher role or admin role
-    if (
-      userData["custom:role"] !== ROLES.TEACHER &&
-      userData["custom:role"] !== ROLES.SUPER_ADMIN
-    ) {
-      return errorResponse("Insufficient permissions", 403);
-    }
-
-    // If teacher, verify they own the course
-    if (userData["custom:role"] === ROLES.TEACHER) {
-      const courseData = await dynamoDB.getItem({
-        TableName: "Courses",
-        Key: {
-          courseId: { S: courseId },
-        },
-      });
-
-      if (courseData.Item?.teacherId.S !== userData.sub) {
-        return errorResponse(
-          "You are not authorized to access this course",
-          403
-        );
-      }
-    }
-
-    // Get students enrolled in this course
-    const enrollments = await dynamoDB.query({
-      TableName: "Enrollments",
-      KeyConditionExpression: "courseId = :courseId",
-      ExpressionAttributeValues: {
-        ":courseId": { S: courseId },
+    // Get meeting details
+    const meeting = await dynamoDB.getItem({
+      TableName: "Meetings",
+      Key: {
+        meetingId: { S: meetingId },
       },
     });
 
-    // Get detailed student info
-    const studentDetails = [];
-
-    for (const enrollment of enrollments.Items) {
-      const studentId = enrollment.userId.S;
-      try {
-        const command = new AdminGetUserCommand({
-          Username: studentId,
-          UserPoolId: USER_POOL_ID,
-        });
-
-        const studentData = await cognito.send(command);
-
-        studentDetails.push({
-          id: studentId,
-          email:
-            studentData.UserAttributes.find((attr) => attr.Name === "email")
-              ?.Value || "",
-          firstName:
-            studentData.UserAttributes.find(
-              (attr) => attr.Name === "given_name"
-            )?.Value || "",
-          lastName:
-            studentData.UserAttributes.find(
-              (attr) => attr.Name === "family_name"
-            )?.Value || "",
-          enrolledAt: enrollment.enrolledAt.S,
-        });
-      } catch (error) {
-        console.error(
-          `Error fetching details for student ${studentId}:`,
-          error
-        );
-        studentDetails.push({
-          id: studentId,
-          error: "Failed to fetch student details",
-        });
-      }
+    if (!meeting.Item) {
+      return errorResponse("Meeting not found", 404);
     }
 
-    return successResponse(studentDetails);
+    const userRole = userData["custom:role"];
+    // Verify course access
+    await verifyCourseAccess(userData.sub, userRole, meeting.Item.courseId.S);
+
+    // Get Chime meeting
+    const getMeetingCommand = new GetMeetingCommand({
+      MeetingId: meetingId,
+    });
+
+    const chimeMeeting = await chimeClient.send(getMeetingCommand);
+    const attendee = await createAttendee(meetingId, userData.sub);
+
+    return successResponse({ meeting: chimeMeeting, attendee });
   } catch (error) {
+    if (error.name === "NotFoundException") {
+      return errorResponse("Meeting not found", 404);
+    }
     return errorResponse(error);
   }
 };
 
+// JOIN COURSE MEETING
 module.exports.joinCourse = async (event) => {
   try {
     const userData = await authenticate(event);

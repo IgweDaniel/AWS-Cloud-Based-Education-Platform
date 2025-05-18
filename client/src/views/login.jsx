@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fetchUserAttributes, getCurrentUser, signIn } from "aws-amplify/auth";
+import { signIn } from "aws-amplify/auth";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -27,7 +27,8 @@ import { useForm } from "react-hook-form";
 import { ClipLoader } from "react-spinners";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { useAuth } from "@/context/auth";
-import { GraduationCap, Info, ShieldCheckIcon } from "lucide-react";
+import { GraduationCap, Info } from "lucide-react";
+import { ROUTES } from "@/constants";
 
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -60,7 +61,7 @@ const Login = () => {
       });
 
       await setUserSession();
-      navigate("/");
+      navigate(ROUTES.HOME);
     } catch (err) {
       setError(err.message);
       setLoading(false);

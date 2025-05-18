@@ -17,6 +17,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { ClipLoader } from "react-spinners";
+import { ROLES } from "@/constants";
 
 export const Profile = () => {
   const { user } = useAuth();
@@ -58,7 +59,8 @@ export const Profile = () => {
       setLoading(true);
       try {
         // Different endpoints based on user role
-        if (user.role === "STUDENT") {
+        if (user.role === ROLES.STUDENT) {
+          // TODO: create a handler for this
           // In a real app, you would fetch actual student data
           // For demo purposes, we're just using mock data for now
           setUserStats((prev) => ({
@@ -69,7 +71,7 @@ export const Profile = () => {
               gpa: 3.7,
             },
           }));
-        } else if (user.role === "TEACHER") {
+        } else if (user.role === ROLES.TEACHER) {
           // In a real app, fetch actual teacher data
           setUserStats((prev) => ({
             ...prev,
@@ -92,11 +94,11 @@ export const Profile = () => {
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
-      case "SUPER_ADMIN":
+      case ROLES.SUPER_ADMIN:
         return "bg-red-100 text-red-800 border-red-300";
-      case "TEACHER":
+      case ROLES.TEACHER:
         return "bg-green-100 text-green-800 border-green-300";
-      case "STUDENT":
+      case ROLES.STUDENT:
         return "bg-blue-100 text-blue-800 border-blue-300";
       default:
         return "bg-gray-100 text-gray-800 border-gray-300";
@@ -184,7 +186,7 @@ export const Profile = () => {
         </Card>
 
         {/* Additional cards based on user role */}
-        {user?.role === "STUDENT" && (
+        {user?.role === ROLES.STUDENT && (
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -224,7 +226,7 @@ export const Profile = () => {
           </Card>
         )}
 
-        {user?.role === "TEACHER" && (
+        {user?.role === ROLES.TEACHER && (
           <Card className="md:col-span-3">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

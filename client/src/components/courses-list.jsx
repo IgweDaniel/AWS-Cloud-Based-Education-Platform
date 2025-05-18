@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
-import { authenticatedFetch } from "../utils/fetch";
-import { ENDPOINTS, ROLES } from "../constants";
+import { authenticatedFetch } from "../lib/fetch";
+import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../constants";
 
 import CourseCard from "./course-card";
 import { ClipLoader } from "react-spinners";
@@ -105,7 +105,7 @@ export const CourseList = () => {
       // Filter by search term
       const searchMatch =
         searchTerm.trim() === "" ||
-        classItem.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        classItem.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (classItem.description &&
           classItem.description
             .toLowerCase()
@@ -128,7 +128,7 @@ export const CourseList = () => {
     .sort((a, b) => {
       // Sort based on sortBy option
       if (sortBy === "alpha") {
-        return a.className.localeCompare(b.className);
+        return a.courseName.localeCompare(b.courseName);
       } else if (sortBy === "popular") {
         return (b.studentCount || 0) - (a.studentCount || 0);
       }
@@ -254,7 +254,9 @@ export const CourseList = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Courses</p>
-              <h3 className="text-2xl font-bold">{classes.length}</h3>
+              <h3 className="text-2xl font-bold">
+                {loading ? "-" : classes.length}
+              </h3>
             </div>
           </CardContent>
         </Card>
@@ -267,7 +269,11 @@ export const CourseList = () => {
             <div>
               <p className="text-sm text-muted-foreground">Departments</p>
               <h3 className="text-2xl font-bold">
-                {departments.length > 0 ? departments.length - 1 : 0}
+                {loading
+                  ? "-"
+                  : departments.length > 0
+                  ? departments.length - 1
+                  : 0}
               </h3>
             </div>
           </CardContent>
@@ -282,7 +288,9 @@ export const CourseList = () => {
               <p className="text-sm text-muted-foreground">
                 {user?.role === ROLES.STUDENT ? "Fellow Students" : "Students"}
               </p>
-              <h3 className="text-2xl font-bold">{stats.totalStudents}</h3>
+              <h3 className="text-2xl font-bold">
+                {loading ? "-" : stats.totalStudents}
+              </h3>
             </div>
           </CardContent>
         </Card>
@@ -294,7 +302,9 @@ export const CourseList = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Faculty Members</p>
-              <h3 className="text-2xl font-bold">{stats.totalTeachers}</h3>
+              <h3 className="text-2xl font-bold">
+                {loading ? "-" : stats.totalTeachers}
+              </h3>
             </div>
           </CardContent>
         </Card>
@@ -326,8 +336,8 @@ export const CourseList = () => {
               )}
             </h2>
 
-            {user?.role === "SUPER_ADMIN" && (
-              <Button onClick={() => navigate("/admin/create-course")}>
+            {user?.role === ROLES.SUPER_ADMIN && (
+              <Button onClick={() => navigate(ROUTES.ADMIN_CREATE_COURSE)}>
                 <BookMarked className="mr-2 h-4 w-4" />
                 Create New Course
               </Button>
@@ -364,10 +374,16 @@ export const CourseList = () => {
                   <div
                     key={classItem.classId}
                     className="px-4 py-3 text-sm grid grid-cols-12 gap-4 border-b last:border-0 hover:bg-muted/50 cursor-pointer"
-                    onClick={() => navigate(`/class/${classItem.classId}`)}
+                    onClick={() =>
+                      navigate(
+                        getRouteWithParams(ROUTES.COURSE_DETAIL, {
+                          courseId: classItem.courseId,
+                        })
+                      )
+                    }
                   >
                     <div className="col-span-5 font-medium">
-                      {classItem.className}
+                      {classItem.courseName}
                     </div>
                     <div className="col-span-3 text-muted-foreground">
                       {classItem.teacherName}
@@ -409,17 +425,17 @@ export const CourseList = () => {
                 : "There are no courses created in the system yet."}
             </CardDescription>
             {user?.role === ROLES.STUDENT && (
-              <Button onClick={() => navigate("/student-dashboard")}>
+              <Button onClick={() => navigate(ROUTES.COURSES)}>
                 Browse Available Courses
               </Button>
             )}
             {user?.role === ROLES.TEACHER && (
-              <Button onClick={() => navigate("/teacher-dashboard")}>
+              <Button onClick={() => navigate(ROUTES.DASHBOARD)}>
                 Return to Dashboard
               </Button>
             )}
             {user?.role === ROLES.SUPER_ADMIN && (
-              <Button onClick={() => navigate("/admin/create-course")}>
+              <Button onClick={() => navigate(ROUTES.ADMIN_CREATE_COURSE)}>
                 Create New Course
               </Button>
             )}

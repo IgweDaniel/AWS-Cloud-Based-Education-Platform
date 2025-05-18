@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../../utils/fetch";
+import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 
 import {
@@ -22,6 +22,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserCheck, School } from "lucide-react";
 import { ClipLoader } from "react-spinners";
+import { ROUTES } from "@/constants";
 
 const AssignTeacher = () => {
   const [teachers, setTeachers] = useState([]);
@@ -78,7 +79,7 @@ const AssignTeacher = () => {
 
       setSuccess("Teacher successfully assigned to the course");
       setTimeout(() => {
-        navigate("/admin/courses");
+        navigate(ROUTES.COURSES);
       }, 1500);
     } catch (error) {
       console.log("Failed to assign teacher:", error);
@@ -183,7 +184,7 @@ const AssignTeacher = () => {
               <CardFooter className="flex justify-end gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => navigate("/admin/courses")}
+                  onClick={() => navigate(ROUTES.COURSES)}
                 >
                   Cancel
                 </Button>

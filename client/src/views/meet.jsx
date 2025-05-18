@@ -19,8 +19,8 @@ import {
 } from "react-icons/fa";
 import { FcEndCall } from "react-icons/fc";
 
-import { authenticatedFetch } from "../utils/fetch";
-import { ENDPOINTS } from "../constants";
+import { authenticatedFetch } from "../lib/fetch";
+import { ENDPOINTS, ROUTES } from "../constants";
 
 // UI components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
 const deviceController = new DefaultDeviceController(logger);
 
 // TODO: listen for meeting ended event and redirect
+// TODO: call the end meeting session if teacher
 const Meet = () => {
   const { classId, meetingId } = useParams();
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ const Meet = () => {
         if (error.statusCode === 404) {
           // Meeting was deleted by Chime
           //TODO: Show a user-friendly message
-          navigate("/dashboard", {
+          navigate(ROUTES.DASHBOARD, {
             state: {
               message: "This meeting has ended or is no longer available",
             },
@@ -231,7 +232,6 @@ const Meet = () => {
               return [...prevTiles, tileState];
             }
             return prevTiles;
-            // return prevTiles.filter((tile) => tile.tileId !== tileState.tileId);
           });
         }
       },
@@ -252,6 +252,35 @@ const Meet = () => {
       }
     };
   }, [meetingSession]);
+
+  useEffect(() => {
+    const eventObserver = {
+      eventDidReceive(name, attributes) {
+        // Handle a meeting event.
+        switch (name) {
+          case "meetingEnded":
+            console.log(`Meeting has ended ${attributes} in `, attributes);
+            navigate(ROUTES.DASHBOARD, {
+              state: {
+                message: "This meeting has ended",
+              },
+            });
+            break;
+
+          default:
+            break;
+        }
+      },
+    };
+    if (!meetingSession) return;
+
+    meetingSession.eventController.addObserver(eventObserver);
+    return () => {
+      if (meetingSession) {
+        meetingSession.eventController.removeObserver(eventObserver);
+      }
+    };
+  }, [meetingSession,navigate]);
 
   useEffect(() => {
     if (meetingSession) {
@@ -315,7 +344,10 @@ const Meet = () => {
           </CardHeader>
           <CardContent>
             <p className="mb-4">{error}</p>
-            <Button onClick={() => navigate("/dashboard")} variant="outline">
+            <Button
+              onClick={() => navigate(ROUTES.DASHBOARD)}
+              variant="outline"
+            >
               Return to Dashboard
             </Button>
           </CardContent>
@@ -404,7 +436,7 @@ const Meet = () => {
           size="icon"
           onClick={async () => {
             await cleanupMeeting();
-            navigate("/");
+            navigate(ROUTES.HOME);
           }}
           aria-label="Leave meeting"
         >

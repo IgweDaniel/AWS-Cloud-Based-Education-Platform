@@ -129,6 +129,18 @@ functions:
           method: post
           cors: true
 
+  unenrollStudent:
+    handler: handler.unenrollStudent
+    events:
+      - http:
+          path: courses/{courseId}/student
+          method: delete
+          cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
+
   getCourses:
     handler: handler.getCourses
     events:
@@ -331,12 +343,10 @@ resources:
       Properties:
         TableName: Meetings
         AttributeDefinitions:
-          - AttributeName: meetingId
-            AttributeType: S
           - AttributeName: courseId
             AttributeType: S
         KeySchema:
-          - AttributeName: meetingId
+          - AttributeName: courseId
             KeyType: HASH
         GlobalSecondaryIndexes:
           - IndexName: ClassIndex

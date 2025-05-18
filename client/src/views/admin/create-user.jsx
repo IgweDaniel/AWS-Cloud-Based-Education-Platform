@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../../utils/fetch";
+import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 import {
   Card,
@@ -23,6 +23,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserPlus, Shield } from "lucide-react";
 import { ClipLoader } from "react-spinners";
+import { ROLES, ROUTES } from "@/constants";
 
 const CreateUser = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const CreateUser = () => {
     password: "",
     firstName: "",
     lastName: "",
-    role: "STUDENT",
+    role: ROLES.STUDENT,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -60,7 +61,7 @@ const CreateUser = () => {
         password: "",
         firstName: "",
         lastName: "",
-        role: "STUDENT",
+        role: ROLES.STUDENT,
       });
     } catch (err) {
       setError(err.message);
@@ -178,8 +179,8 @@ const CreateUser = () => {
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="STUDENT">Student</SelectItem>
-                      <SelectItem value="TEACHER">Teacher</SelectItem>
+                      <SelectItem value={ROLES.STUDENT}>Student</SelectItem>
+                      <SelectItem value={ROLES.TEACHER}>Teacher</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -188,7 +189,7 @@ const CreateUser = () => {
             <CardFooter className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => navigate("/admin/users")}
+                onClick={() => navigate(ROUTES.ADMIN_USERS_LIST)}
               >
                 Cancel
               </Button>

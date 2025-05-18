@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/auth";
-import { authenticatedFetch } from "../utils/fetch";
+import { authenticatedFetch } from "../lib/fetch";
 import { useNavigate } from "react-router-dom";
 import ClassCard from "./course-card";
-import { ENDPOINTS } from "../constants";
+import { ENDPOINTS, ROLES, ROUTES } from "../constants";
 
 import { Button } from "@/components/ui/button";
 import { ClipLoader } from "react-spinners";
@@ -53,8 +53,8 @@ export const AdminCoursesList = () => {
         <h1 className="text-3xl font-bold campus-text-gradient">
           University Courses
         </h1>
-        {user?.role === "SUPER_ADMIN" && (
-          <Button onClick={() => navigate("/create-course")}>
+        {user?.role === ROLES.SUPER_ADMIN && (
+          <Button onClick={() => navigate(ROUTES.ADMIN_CREATE_COURSE)}>
             <BookMarked className="mr-2 h-4 w-4" />
             Create New Course
           </Button>
@@ -78,9 +78,9 @@ export const AdminCoursesList = () => {
           </CardHeader>
           <CardContent className="text-center text-muted-foreground">
             No courses are currently available.
-            {user?.role === "SUPER_ADMIN" && (
+            {user?.role === ROLES.SUPER_ADMIN && (
               <div className="mt-4">
-                <Button onClick={() => navigate("/admin/create-course")}>
+                <Button onClick={() => navigate(ROUTES.CREATE_COURSE)}>
                   Create Your First Course
                 </Button>
               </div>

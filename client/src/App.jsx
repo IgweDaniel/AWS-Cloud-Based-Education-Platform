@@ -15,7 +15,7 @@ import PrivateRoute from "./components/private-route";
 import Login from "./views/login";
 
 import Layout from "./components/layout";
-import Dashboard from "@/views/cashboard";
+import Dashboard from "@/views/dashboard";
 import ProfilePage from "@/views/profile";
 
 import Courses from "@/views/courses";
@@ -24,9 +24,11 @@ import CreateUser from "@/views/admin/create-user";
 import CreateCourse from "@/views/admin/create-course";
 import AssignTeacher from "@/views/admin/assign-teacher";
 import UsersList from "@/views/admin/users-list";
-// import ManageStudents from "@/views/admin/ManageStudents";
+import ManageStudents from "@/views/admin/manage-students";
 import StartSession from "@/views/start-session";
 import SessionsList from "./views/sessions-list";
+import { ROLES } from "./constants";
+import Meet from "./views/meet";
 
 Amplify.configure(awsconfig);
 
@@ -61,20 +63,33 @@ const App = () => {
                 path="courses/:courseId/start"
                 element={<StartSession />}
               />
+              <Route
+                path="courses/:courseId/meeting/:meetingId"
+                element={<Meet />}
+              />
+
               {/* Catch-all route */}
-              <Route element={<PrivateRoute allowedRoles={["TEACHER"]} />}>
+              <Route element={<PrivateRoute allowedRoles={[ROLES.TEACHER]} />}>
                 {/* <Route index element={<Dashboard />} /> */}
               </Route>
               <Route
                 element={
-                  <PrivateRoute allowedRoles={["TEACHER", "SUPER_ADMIN"]} />
+                  <PrivateRoute
+                    allowedRoles={[ROLES.TEACHER, ROLES.SUPER_ADMIN]}
+                  />
                 }
               ></Route>
-              <Route element={<PrivateRoute allowedRoles={["SUPER_ADMIN"]} />}>
+              <Route
+                element={<PrivateRoute allowedRoles={[ROLES.SUPER_ADMIN]} />}
+              >
                 <Route path="users" element={<UsersList />} />
                 <Route path="create-user" element={<CreateUser />} />
                 <Route path="create-course" element={<CreateCourse />} />
                 <Route path="assign-teacher" element={<AssignTeacher />} />
+                <Route
+                  path="courses/:courseId/manage-students"
+                  element={<ManageStudents />}
+                />
               </Route>
 
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../utils/fetch";
+import { authenticatedFetch } from "../lib/fetch";
 import { useAuth } from "../context/auth";
-import { ENDPOINTS } from "../constants";
+import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,13 +19,14 @@ import {
 } from "lucide-react";
 
 const CourseDetail = () => {
+  console.log({ ROLES });
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  console.log({ user });
   // Simplified mock resources for a basic UI
   const resources = [
     {
@@ -52,7 +53,10 @@ const CourseDetail = () => {
       });
       const data = await response.json();
       navigate(
-        `/classes/${courseId}/meeting/${data.meeting.Meeting.MeetingId}`
+        getRouteWithParams(ROUTES.MEET, {
+          courseId,
+          meetingId: data.meeting.Meeting.MeetingId,
+        })
       );
     } catch (error) {
       console.error("Error starting meeting:", error);
@@ -99,8 +103,8 @@ const CourseDetail = () => {
   }
 
   const isTeacher =
-    user.role === "TEACHER" && classData.teacherId === user.userId;
-  // const isAdmin = user.role === "SUPER_ADMIN";
+    user.role === ROLES.TEACHER && classData.teacherId === user.userId;
+  // const isAdmin = user.role === ROLES.SUPER_ADMIN;
 
   return (
     <div className="space-y-8">
@@ -112,7 +116,7 @@ const CourseDetail = () => {
               <h1 className="text-3xl font-bold campus-text-gradient">
                 {classData.className}
               </h1>
-              {classData.activeMeeting && (
+              {classData.activeMeetingId && (
                 <Badge variant="success" className="text-xs">
                   Live Now
                 </Badge>
@@ -127,21 +131,24 @@ const CourseDetail = () => {
             {isTeacher && (
               <Button
                 onClick={
-                  classData.activeMeeting
+                  classData.activeMeetingId
                     ? () =>
                         navigate(
-                          `/classes/${courseId}/meeting/${classData.activeMeeting}`
+                          getRouteWithParams(ROUTES.MEET, {
+                            courseId,
+                            meetingId: classData.activeMeetingId,
+                          })
                         )
                     : startMeeting
                 }
                 className={
-                  classData.activeMeeting
+                  classData.activeMeetingId
                     ? "bg-destructive hover:bg-destructive/90"
                     : "bg-primary hover:bg-primary/90"
                 }
                 size="sm"
               >
-                {classData.activeMeeting ? (
+                {classData.activeMeetingId ? (
                   <>
                     <Video className="mr-2 h-4 w-4" /> Join Active Session
                   </>
@@ -153,11 +160,14 @@ const CourseDetail = () => {
               </Button>
             )}
 
-            {!isTeacher && classData.activeMeeting && (
+            {!isTeacher && classData.activeMeetingId && (
               <Button
                 onClick={() =>
                   navigate(
-                    `/classes/${courseId}/meeting/${classData.activeMeeting}`
+                    getRouteWithParams(ROUTES.MEET, {
+                      courseId,
+                      meetingId: classData.activeMeetingId,
+                    })
                   )
                 }
                 className="bg-primary hover:bg-primary/90"
@@ -206,7 +216,7 @@ const CourseDetail = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {classData.activeMeeting ? (
+              {classData.activeMeetingId ? (
                 <div className="bg-success/10 border border-success/20 text-success-foreground p-4 rounded-md">
                   <div className="flex items-center">
                     <div className="p-1.5 bg-success/20 rounded-full mr-3">
@@ -223,7 +233,10 @@ const CourseDetail = () => {
                       size="sm"
                       onClick={() =>
                         navigate(
-                          `/classes/${courseId}/meeting/${classData.activeMeeting}`
+                          getRouteWithParams(ROUTES.MEET, {
+                            courseId,
+                            meetingId: classData.activeMeetingId,
+                          })
                         )
                       }
                     >
@@ -261,24 +274,53 @@ const CourseDetail = () => {
 
           {/* Students list - Simple version */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Enrolled Students</CardTitle>
+
+              {user.role == ROLES.SUPER_ADMIN && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    navigate(
+                      getRouteWithParams(ROUTES.ADMIN_MANAGE_STUDENTS, {
+                        courseId,
+                      })
+                    )
+                  }
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Manage Students
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {classData.students && classData.students.length > 0 ? (
                 <div className="divide-y">
-                  {classData.students.map((student, index) => (
-                    <div key={index} className="py-3 flex items-center">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mr-3">
-                        <span className="font-medium text-sm">
-                          {student.substring(0, 2).toUpperCase()}
-                        </span>
+                  {classData.enrolledStudents.map(
+                    ({ id, firstName, lastName }, index) => (
+                      <div key={index} className="py-3 flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mr-3">
+                          <span className="font-medium text-sm">
+                            {(firstName && lastName
+                              ? firstName.charAt(0).toUpperCase() +
+                                lastName.charAt(0).toUpperCase()
+                              : firstName
+                              ? firstName.substring(0, 2).toUpperCase()
+                              : lastName
+                              ? lastName.substring(0, 2).toUpperCase()
+                              : id.substring(0, 2).toUpperCase()
+                            )
+                              .substring(0, 2)
+                              .toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-grow">
+                          <div className="font-medium">{`${firstName} ${lastName}`}</div>
+                        </div>
                       </div>
-                      <div className="flex-grow">
-                        <div className="font-medium">{student}</div>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">

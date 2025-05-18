@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/auth";
 import { Button } from "@/components/ui/button";
 import { User, LogOut, ChevronDown } from "lucide-react";
+import { ROUTES } from "@/constants";
 
 const ProfileMenu = () => {
   const { logout, user } = useAuth();
@@ -15,7 +16,7 @@ const ProfileMenu = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate(ROUTES.LOGIN);
   };
 
   const handleNavigate = (path) => {

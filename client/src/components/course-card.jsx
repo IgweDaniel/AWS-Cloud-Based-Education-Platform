@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../utils/fetch";
-import { ENDPOINTS } from "../constants";
+import { authenticatedFetch } from "../lib/fetch";
+import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../constants";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,12 +61,13 @@ const ClassCard = ({ classItem, userRole }) => {
         }
       );
       const data = await response.json();
-      // `/classes/${classId}/meeting/${data.meeting.Meeting.MeetingId}`
       console.log({ data });
 
-      // window.location.href = ``;
       navigate(
-        `/courses/${classItem.courseId}/meeting/${data.meeting.Meeting.MeetingId}`
+        getRouteWithParams(ROUTES.MEET, {
+          courseId: classItem.courseId,
+          meetingId: data.meeting.Meeting.MeetingId,
+        })
       );
     } catch (error) {
       console.error("Error joining class:", error);
@@ -76,7 +77,11 @@ const ClassCard = ({ classItem, userRole }) => {
   };
 
   const handleViewDetails = () => {
-    navigate(`/courses/${classItem.courseId}`);
+    navigate(
+      getRouteWithParams(ROUTES.COURSE_DETAIL, {
+        courseId: classItem.courseId,
+      })
+    );
   };
 
   // Generate a color seed based on the department name for consistent department coloring
@@ -108,7 +113,7 @@ const ClassCard = ({ classItem, userRole }) => {
           >
             {classItem.courseName}
           </CardTitle>
-          {classItem.activeMeeting && (
+          {classItem.activeMeetingId && (
             <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
               Live Now
             </Badge>
@@ -148,8 +153,9 @@ const ClassCard = ({ classItem, userRole }) => {
         </div>
       </CardContent>
 
+      {/* {JSON.stringify(classItem, null, 2)} */}
       <CardFooter className="flex gap-2 pt-4 border-t mt-2">
-        {classItem.activeMeeting && (
+        {classItem.activeMeetingId && (
           <Button
             onClick={handleJoinMeeting}
             className="w-full flex items-center justify-center"
@@ -164,10 +170,16 @@ const ClassCard = ({ classItem, userRole }) => {
           </Button>
         )}
 
-        {!classItem.activeMeeting && userRole === "TEACHER" && (
+        {!classItem.activeMeetingId && userRole === ROLES.TEACHER && (
           <Button
             variant="outline"
-            onClick={() => navigate(`/classes/${classItem.courseId}/start`)}
+            onClick={() =>
+              navigate(
+                getRouteWithParams(ROUTES.MEET_STAGING, {
+                  courseId: classItem.courseId,
+                })
+              )
+            }
             className="w-full"
           >
             <Video className="h-4 w-4 mr-2" />
@@ -176,12 +188,12 @@ const ClassCard = ({ classItem, userRole }) => {
         )}
 
         <Button
-          variant={classItem.activeMeeting ? "outline" : "default"}
+          variant={classItem.activeMeetingId ? "outline" : "default"}
           onClick={handleViewDetails}
-          className={classItem.activeMeeting ? "w-1/3" : "w-full"}
+          className={classItem.activeMeetingId ? "w-1/3" : "w-full"}
         >
           <CalendarCheck className="h-4 w-4 mr-2" />
-          {classItem.activeMeeting ? "Details" : "View Course"}
+          {classItem.activeMeetingId ? "Details" : "View Course"}
         </Button>
       </CardFooter>
     </Card>

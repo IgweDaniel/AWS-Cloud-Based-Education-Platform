@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../../utils/fetch";
-import { ENDPOINTS } from "../../constants";
+import { authenticatedFetch } from "../../lib/fetch";
+import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../../constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,11 +70,13 @@ const UsersList = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_FILTER}>All Roles</SelectItem>
-            <SelectItem value="TEACHER">Teachers</SelectItem>
-            <SelectItem value="STUDENT">Students</SelectItem>
+            <SelectItem value={ROLES.TEACHER}>Teachers</SelectItem>
+            <SelectItem value={ROLES.STUDENT}>Students</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => navigate("/create-user")}>Add New User</Button>
+        <Button onClick={() => navigate(ROUTES.ADMIN_CREATE_USER)}>
+          Add New User
+        </Button>
       </div>
 
       <Table>
@@ -105,7 +107,13 @@ const UsersList = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate(`/admin/users/${user.username}/edit`)}
+                  onClick={() =>
+                    navigate(
+                      getRouteWithParams(ROUTES.ADMIN_EDIT_USER, {
+                        userId: user.id,
+                      })
+                    )
+                  }
                 >
                   Edit
                 </Button>
@@ -120,11 +128,11 @@ const UsersList = () => {
 
 const getRoleBadgeColor = (role) => {
   switch (role) {
-    case "SUPER_ADMIN":
+    case ROLES.SUPER_ADMIN:
       return "bg-red-100 text-red-800 border-red-300";
-    case "TEACHER":
+    case ROLES.TEACHER:
       return "bg-green-100 text-green-800 border-green-300";
-    case "STUDENT":
+    case ROLES.STUDENT:
       return "bg-blue-100 text-blue-800 border-blue-300";
     default:
       return "bg-gray-100 text-gray-800 border-gray-300";

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../../utils/fetch";
-import { ENDPOINTS } from "@/constants";
+import { authenticatedFetch } from "../../lib/fetch";
+import { ENDPOINTS, ROLES, ROUTES } from "@/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,7 +67,7 @@ export const CreateCourse = () => {
         const response = await authenticatedFetch(ENDPOINTS.users.list);
         const users = await response.json();
         const filteredTeachers = users.filter(
-          (user) => user.role === "TEACHER"
+          (user) => user.role === ROLES.TEACHER
         );
         setTeachers(filteredTeachers);
       } catch (error) {
@@ -94,7 +94,7 @@ export const CreateCourse = () => {
 
       setSuccess(true);
       setTimeout(() => {
-        navigate("/admin/courses");
+        navigate(ROUTES.COURSES);
       }, 1500);
     } catch (err) {
       setError(err.message || "An error occurred while creating the class");
@@ -292,7 +292,7 @@ export const CreateCourse = () => {
                       type="button"
                       variant="outline"
                       className="mr-2"
-                      onClick={() => navigate("/admin/courses")}
+                      onClick={() => navigate(ROUTES.COURSES)}
                     >
                       Cancel
                     </Button>

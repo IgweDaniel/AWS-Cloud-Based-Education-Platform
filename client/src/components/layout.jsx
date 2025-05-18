@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../context/auth";
 import { cn } from "@/lib/utils";
 import PropTypes from "prop-types";
+import { ROLES, ROUTES } from "@/constants";
 
 // UI Components
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -24,8 +25,6 @@ import {
   UserCheck,
   User,
   Video,
-  Calendar,
-  BookOpenCheck,
 } from "lucide-react";
 
 /**
@@ -76,19 +75,19 @@ const getNavigationItems = (role, navigate, logoutFn) => {
         icon: (props) => (
           <BookOpen className={cn("h-4 w-4", props.className)} />
         ),
-        href: "/courses",
+        href: ROUTES.COURSES,
       },
       {
         label: "Faculty & Staff",
         icon: (props) => <Users className={cn("h-4 w-4", props.className)} />,
-        href: "/users",
+        href: ROUTES.ADMIN_USERS_LIST,
       },
       {
         label: "Create Course",
         icon: (props) => (
           <PlusSquare className={cn("h-4 w-4", props.className)} />
         ),
-        href: "/create-course",
+        href: ROUTES.ADMIN_CREATE_COURSE,
         badge: "New",
       },
       {
@@ -96,14 +95,14 @@ const getNavigationItems = (role, navigate, logoutFn) => {
         icon: (props) => (
           <UserPlus className={cn("h-4 w-4", props.className)} />
         ),
-        href: "/create-user",
+        href: ROUTES.ADMIN_CREATE_USER,
       },
       {
         label: "Assign Faculty",
         icon: (props) => (
           <UserCheck className={cn("h-4 w-4", props.className)} />
         ),
-        href: "/assign-teacher",
+        href: ROUTES.ADMIN_ASSIGN_TEACHER,
       },
     ],
     TEACHER: [
@@ -112,12 +111,12 @@ const getNavigationItems = (role, navigate, logoutFn) => {
         icon: (props) => (
           <BookOpen className={cn("h-4 w-4", props.className)} />
         ),
-        href: "/courses",
+        href: ROUTES.COURSES,
       },
       {
         label: "Sessions",
         icon: (props) => <Video className={cn("h-4 w-4", props.className)} />,
-        href: "/sessions",
+        href: ROUTES.SESSIONS,
       },
       // {
       //   label: "Students",
@@ -131,7 +130,7 @@ const getNavigationItems = (role, navigate, logoutFn) => {
         icon: (props) => (
           <BookOpen className={cn("h-4 w-4", props.className)} />
         ),
-        href: "/courses",
+        href: ROUTES.COURSES,
       },
       // {
       //   label: "Schedule",
@@ -166,7 +165,7 @@ const getNavigationItems = (role, navigate, logoutFn) => {
         } catch (error) {
           console.error("Logout failed:", error);
         }
-        navigate("/login");
+        navigate(ROUTES.LOGIN);
       },
     },
   ];
@@ -176,13 +175,13 @@ const getNavigationItems = (role, navigate, logoutFn) => {
     {
       label: "Dashboard",
       icon: (props) => <BarChart3 className={cn("h-4 w-4", props.className)} />,
-      href: "/",
+      href: ROUTES.DASHBOARD,
     },
     ...items,
     {
       label: "Profile",
       icon: (props) => <User className={cn("h-4 w-4", props.className)} />,
-      href: "/profile",
+      href: ROUTES.PROFILE,
     },
     ...logoutItem,
   ];
@@ -193,11 +192,11 @@ const getTitle = (path, role) => {
   // Default dashboard titles based on role
   if (path === "/") {
     switch (role) {
-      case "SUPER_ADMIN":
+      case ROLES.SUPER_ADMIN:
         return "Admin Dashboard";
-      case "TEACHER":
+      case ROLES.TEACHER:
         return "Faculty Dashboard";
-      case "STUDENT":
+      case ROLES.STUDENT:
         return "Student Dashboard";
       default:
         return "Dashboard";
@@ -205,32 +204,37 @@ const getTitle = (path, role) => {
   }
 
   // Admin routes
-  if (path.startsWith("/admin")) {
-    if (path === "/admin") return "Admin Dashboard";
-    if (path === "courses") return "Manage Courses";
-    if (path === "users") return "Users Management";
-    if (path === "create-user") return "Create User";
-    if (path === "create-course") return "Create Course";
-    if (path === "assign-lecturer") return "Assign Faculty";
-    if (path.includes("/admin/class/") && path.endsWith("/students"))
-      return "Manage Students";
-    if (path === "/admin/profile") return "Admin Profile";
+  // Map of route paths to titles
+  const routeTitleMap = {
+    [ROUTES.DASHBOARD]: "Dashboard",
+    [ROUTES.ADMIN_DASHBOARD]: "Admin Dashboard",
+    [ROUTES.COURSES]: "My Courses",
+    [ROUTES.ADMIN_COURSES]: "Manage Courses",
+    [ROUTES.ADMIN_USERS_LIST]: "Users Management",
+    [ROUTES.ADMIN_CREATE_USER]: "Create User",
+    [ROUTES.ADMIN_CREATE_COURSE]: "Create Course",
+    [ROUTES.ADMIN_ASSIGN_TEACHER]: "Assign Faculty",
+    [ROUTES.PROFILE]: "User Profile",
+    [ROUTES.ADMIN_PROFILE]: "Admin Profile",
+    [ROUTES.SESSIONS]: "Sessions",
+    [ROUTES.STUDENTS]: "Students",
+    [ROUTES.SCHEDULE]: "Schedule",
+    [ROUTES.GRADES]: "Grades",
+  };
+
+  // Check for exact match
+  if (routeTitleMap[path]) {
+    return routeTitleMap[path];
   }
 
-  // Courses routes
-  if (path === "/classes") return "My Courses";
-  if (path.startsWith("/classes/") && path.includes("/meeting/"))
+  // Pattern-based routes
+  if (path.startsWith(`${ROUTES.COURSES}/`) && path.endsWith("/students"))
+    return "Manage Students";
+  if (path.startsWith(`${ROUTES.COURSES}/`) && path.includes("/meeting/"))
     return "Live Session";
-  if (path.startsWith("/classes/") && path.endsWith("/start"))
+  if (path.startsWith(`${ROUTES.COURSES}/`) && path.endsWith("/start"))
     return "Start Session";
-  if (path.startsWith("/classes/")) return "Course Details";
-
-  // Other routes
-  if (path === "/profile" || path === "/settings") return "User Profile";
-  if (path.startsWith("/sessions")) return "Sessions";
-  if (path.startsWith("/students")) return "Students";
-  if (path.startsWith("/schedule")) return "Schedule";
-  if (path.startsWith("/grades")) return "Grades";
+  if (path.startsWith(`${ROUTES.COURSES}/`)) return "Course Details";
 
   return "Dashboard"; // Fallback title
 };
@@ -276,11 +280,11 @@ const Layout = () => {
   // Get portal name based on role
   const getPortalName = (role) => {
     switch (role) {
-      case "SUPER_ADMIN":
+      case ROLES.SUPER_ADMIN:
         return "Admin Portal";
-      case "TEACHER":
+      case ROLES.TEACHER:
         return "Faculty Portal";
-      case "STUDENT":
+      case ROLES.STUDENT:
         return "Student Portal";
       default:
         return "Portal";
@@ -337,7 +341,7 @@ const Layout = () => {
       {/* Desktop sidebar */}
       <div className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <div className="p-6 border-b border-sidebar-border">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to={ROUTES.HOME} className="flex items-center gap-2">
             <GraduationCap className="h-6 w-6" />
             <div>
               <h2 className="text-lg font-medium">CBEP University</h2>

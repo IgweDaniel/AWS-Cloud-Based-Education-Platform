@@ -6,7 +6,7 @@ import {
 } from "aws-amplify/auth";
 import { signOut } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
-import { useLocation } from "react-router-dom";
+// import { useLocation } from "react-router-dom";
 import { HashLoader } from "react-spinners";
 const AuthContext = createContext({});
 
@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
-  const location = useLocation();
+  // const location = useLocation();
   useEffect(() => {
     // checkUser();
     CheckSignedIn();
@@ -59,6 +59,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    async function checkUser() {
+      try {
+        await setUserSession();
+      } catch (err) {
+        console.error(err);
+      }
+      setLoading(false);
+    }
     if (signedIn) {
       checkUser();
     }
@@ -73,14 +81,6 @@ export function AuthProvider({ children }) {
       setSignedIn(false);
       setLoading(false);
     }
-  }
-  async function checkUser() {
-    try {
-      await setUserSession();
-    } catch (err) {
-      console.error(err);
-    }
-    setLoading(false);
   }
 
   async function setUserSession() {

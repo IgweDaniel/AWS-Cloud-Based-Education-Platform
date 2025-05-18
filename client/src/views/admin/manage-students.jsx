@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../../utils/fetch";
+import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 import {
   Card,
@@ -21,6 +21,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserPlus, UserMinus, Users, ArrowLeft } from "lucide-react";
 import { ClipLoader } from "react-spinners";
+import { getRouteWithParams, ROUTES } from "@/constants";
 
 const ManageStudents = () => {
   const { courseId } = useParams();
@@ -33,6 +34,8 @@ const ManageStudents = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState("");
   const [courseData, setCourseData] = useState(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [unerollingStudentId, setUnerollingStudentId] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -48,8 +51,10 @@ const ManageStudents = () => {
         const availableData = await availableResponse.json();
         const courseDetails = await courseResponse.json();
 
+        // console.log({ enrolledData });
+
         setCourseData(courseDetails);
-        setStudents(enrolledData.students || []);
+        setStudents(enrolledData.enrolledStudents || []);
         setAvailableStudents(
           availableData.filter(
             (student) => !enrolledData.students?.includes(student.username)
@@ -84,8 +89,9 @@ const ManageStudents = () => {
         throw new Error("Failed to enroll student");
       }
 
+      const student = await response.json();
       // Optimistic update
-      setStudents([...students, selectedStudent]);
+      setStudents([...students, student]);
       setAvailableStudents(
         availableStudents.filter((s) => s.username !== selectedStudent)
       );
@@ -103,8 +109,9 @@ const ManageStudents = () => {
   };
 
   const handleRemove = async (studentId) => {
-    setSubmitting(true);
+    setIsRemoving(true);
     setError(null);
+    setUnerollingStudentId(studentId);
     try {
       const response = await authenticatedFetch(
         ENDPOINTS.classes.removeStudent(courseId),
@@ -119,12 +126,13 @@ const ManageStudents = () => {
       }
 
       // Optimistic update
-      setStudents(students.filter((id) => id !== studentId));
+      const idx = students.findIndex(({ id }) => id === studentId);
+      let removedStudent = null;
+      if (idx !== -1) {
+        removedStudent = students[idx];
+        setStudents([...students.slice(0, idx), ...students.slice(idx + 1)]);
+      }
 
-      // Find the student in our available students list or add them back if we have their data
-      const removedStudent = availableStudents.find(
-        (s) => s.username === studentId
-      );
       if (removedStudent) {
         setAvailableStudents([...availableStudents, removedStudent]);
       }
@@ -137,7 +145,8 @@ const ManageStudents = () => {
       console.error("Failed to remove student:", error);
       setError("Failed to remove student");
     } finally {
-      setSubmitting(false);
+      setIsRemoving(false);
+      setUnerollingStudentId(null);
     }
   };
 
@@ -151,12 +160,16 @@ const ManageStudents = () => {
 
   return (
     <div className="space-y-6">
+      <h1 className="text-3xl font-bold mb-2 campus-text-gradient">
+        Manage Enrollment
+      </h1>
       <div>
-        <h1 className="text-3xl font-bold mb-2 campus-text-gradient">
-          Manage Course Enrollment
-        </h1>
+        <h2 className="text-2xl font-bold mb-2 campus-text-gradient">
+          {courseData?.courseName ? `${courseData.courseName}` : "Course"}
+        </h2>
         <p className="text-muted-foreground">
-          Add or remove students from {courseData?.className || "this course"}
+          Add or remove students from this course{" "}
+          {courseData?.courseId ? `(ID: ${courseData.courseId})` : ""}
         </p>
       </div>
 
@@ -243,19 +256,23 @@ const ManageStudents = () => {
           <CardContent>
             <div className="space-y-2">
               {students.length > 0 ? (
-                students.map((studentId) => (
+                students.map(({ id: studentId, firstName, lastName }) => (
                   <div
                     key={studentId}
                     className="flex justify-between items-center p-3 border rounded-md"
                   >
-                    <div>{studentId}</div>
+                    <div>{`${firstName} ${lastName}`}</div>
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => handleRemove(studentId)}
-                      disabled={submitting}
+                      disabled={isRemoving}
                     >
-                      <UserMinus className="h-4 w-4" />
+                      {isRemoving && unerollingStudentId == studentId ? (
+                        <ClipLoader size={20} color="#fff" />
+                      ) : (
+                        <UserMinus className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 ))
@@ -272,7 +289,13 @@ const ManageStudents = () => {
       <div className="flex justify-end">
         <Button
           variant="outline"
-          onClick={() => navigate(`/classes/${courseId}`)}
+          onClick={() =>
+            navigate(
+              getRouteWithParams(ROUTES.COURSES, {
+                courseId,
+              })
+            )
+          }
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Course

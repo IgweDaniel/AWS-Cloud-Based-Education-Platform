@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/auth";
-import { authenticatedFetch } from "../../utils/fetch";
-import { ENDPOINTS } from "../../constants";
+import { authenticatedFetch } from "../../lib/fetch";
+import { ENDPOINTS, ROLES, ROUTES } from "../../constants";
 import {
   Card,
   CardContent,
@@ -121,7 +121,7 @@ export const StudentDashboard = () => {
         // Update stats based on fetched data
         setStats({
           totalClasses: classesData.length,
-          activeClasses: classesData.filter((c) => c.activeMeeting).length,
+          activeClasses: classesData.filter((c) => c.activeMeetingId).length,
           completedAssignments: Math.floor(Math.random() * 15) + 5, // Mock data
           upcomingDeadlines: upcomingAssignments.length,
         });
@@ -153,7 +153,7 @@ export const StudentDashboard = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              Welcome back, {user?.name || "Student"}!
+              Welcome back, {user?.name || ROLES.STUDENT}!
             </h1>
             <p className="text-white/80 max-w-xl">
               Track your academic progress, upcoming assignments, and course
@@ -164,7 +164,7 @@ export const StudentDashboard = () => {
             <Button
               variant="outline"
               className="border-white/30 hover:bg-white/10 text-white"
-              onClick={() => navigate("/classes")}
+              onClick={() => navigate(ROUTES.COURSES)}
             >
               View All Courses <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
@@ -212,7 +212,7 @@ export const StudentDashboard = () => {
             <Button
               variant="ghost"
               className="text-primary"
-              onClick={() => navigate("/classes")}
+              onClick={() => navigate(ROUTES.COURSES)}
             >
               View All <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
@@ -246,7 +246,7 @@ export const StudentDashboard = () => {
                 <p className="text-muted-foreground mb-4">
                   You are not enrolled in any courses yet.
                 </p>
-                <Button onClick={() => navigate("/classes")}>
+                <Button onClick={() => navigate(ROUTES.COURSES)}>
                   Browse Courses
                 </Button>
               </CardContent>
