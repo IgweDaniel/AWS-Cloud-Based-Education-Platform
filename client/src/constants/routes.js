@@ -19,7 +19,7 @@ export const ROUTES = {
   COURSE_DETAIL: "/courses/:courseId",
   START_SESSION: "/courses/:courseId/start-session",
   SESSIONS: "/sessions",
-  MEET: "/courses/:courseId/meeting/:meetingId",
+  MEET: "/courses/:courseId/meeting",
   MEET_STAGING: "/courses/:courseId/start",
 
   // Admin routes

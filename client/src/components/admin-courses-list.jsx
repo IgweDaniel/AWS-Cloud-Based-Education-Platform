@@ -21,7 +21,7 @@ export const AdminCoursesList = () => {
     const fetchClasses = async () => {
       try {
         setLoading(true);
-        const response = await authenticatedFetch(ENDPOINTS.classes.list);
+        const response = await authenticatedFetch(ENDPOINTS.courses.list);
         const data = await response.json();
         setClasses(data);
       } catch (err) {

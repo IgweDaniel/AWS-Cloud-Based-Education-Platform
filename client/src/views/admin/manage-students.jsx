@@ -42,9 +42,9 @@ const ManageStudents = () => {
       try {
         const [enrolledResponse, availableResponse, courseResponse] =
           await Promise.all([
-            authenticatedFetch(ENDPOINTS.classes.details(courseId)),
+            authenticatedFetch(ENDPOINTS.courses.details(courseId)),
             authenticatedFetch(`${ENDPOINTS.users.list}?role=STUDENT`),
-            authenticatedFetch(ENDPOINTS.classes.details(courseId)),
+            authenticatedFetch(ENDPOINTS.courses.details(courseId)),
           ]);
 
         const enrolledData = await enrolledResponse.json();
@@ -78,7 +78,7 @@ const ManageStudents = () => {
     setError(null);
     try {
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.enroll(courseId),
+        ENDPOINTS.courses.enroll(courseId),
         {
           method: "POST",
           body: JSON.stringify({ studentId: selectedStudent }),
@@ -114,7 +114,7 @@ const ManageStudents = () => {
     setUnerollingStudentId(studentId);
     try {
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.removeStudent(courseId),
+        ENDPOINTS.courses.removeStudent(courseId),
         {
           method: "DELETE",
           body: JSON.stringify({ studentId }),

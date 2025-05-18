@@ -55,7 +55,7 @@ const ClassCard = ({ classItem, userRole }) => {
     setLoading(true);
     try {
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.join(classItem.courseId),
+        ENDPOINTS.courses.join(classItem.courseId),
         {
           method: "GET",
         }
@@ -66,7 +66,6 @@ const ClassCard = ({ classItem, userRole }) => {
       navigate(
         getRouteWithParams(ROUTES.MEET, {
           courseId: classItem.courseId,
-          meetingId: data.meeting.Meeting.MeetingId,
         })
       );
     } catch (error) {

@@ -69,7 +69,7 @@ export const CourseList = () => {
 
         // Fetch class metadata (includes terms, departments, and stats)
         const metadataResponse = await authenticatedFetch(
-          ENDPOINTS.classes.metadata
+          ENDPOINTS.courses.metadata
         );
         const metadata = await metadataResponse.json();
 
@@ -85,7 +85,7 @@ export const CourseList = () => {
 
         // Fetch classes
         const classesResponse = await authenticatedFetch(
-          ENDPOINTS.classes.list
+          ENDPOINTS.courses.list
         );
         const classesData = await classesResponse.json();
         setClasses(classesData);

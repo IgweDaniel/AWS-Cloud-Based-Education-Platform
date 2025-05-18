@@ -35,8 +35,8 @@ export const LecturerDashboard = () => {
         // Fetch the teacher's classes
         // Run both fetches in parallel
         const [classesResponse, activeSessionsResponse] = await Promise.all([
-          authenticatedFetch(ENDPOINTS.classes.teacher.list),
-          authenticatedFetch(ENDPOINTS.classes.teacher.activeSessions),
+          authenticatedFetch(ENDPOINTS.courses.teacher.list),
+          authenticatedFetch(ENDPOINTS.courses.teacher.activeSessions),
         ]);
 
         const [classesData, activeSessionsData] = await Promise.all([
@@ -51,7 +51,7 @@ export const LecturerDashboard = () => {
         const studentCounts = await Promise.all(
           classesData.map(async (classItem) => {
             const studentsResponse = await authenticatedFetch(
-              ENDPOINTS.classes.teacher.students(classItem.courseId)
+              ENDPOINTS.courses.teacher.students(classItem.courseId)
             );
             const studentsData = await studentsResponse.json();
             return studentsData?.length ?? 0;
@@ -81,20 +81,20 @@ export const LecturerDashboard = () => {
     try {
       setLoading(true);
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.teacher.startSession(courseId),
+        ENDPOINTS.courses.teacher.startSession(courseId),
         {
           method: "POST",
         }
       );
-      if (response.ok) {
-        const data = await response.json();
-        navigate(
-          getRouteWithParams(ROUTES.MEET, {
-            courseId: courseId,
-            meetingId: data.meetingId,
-          })
-        );
+      if (!response.ok) {
+        throw new Error("Failed to start session");
       }
+      // const data = await response.json();
+      navigate(
+        getRouteWithParams(ROUTES.MEET, {
+          courseId: courseId,
+        })
+      );
     } catch (error) {
       console.error("Error starting session:", error);
     } finally {
@@ -238,7 +238,6 @@ export const LecturerDashboard = () => {
                               navigate(
                                 getRouteWithParams(ROUTES.MEET, {
                                   courseId: session.courseId,
-                                  meetingId: session.meetingId,
                                 })
                               )
                             }

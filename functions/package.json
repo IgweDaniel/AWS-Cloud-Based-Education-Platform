@@ -23,6 +23,7 @@
     "-": "^0.0.1",
     "@aws-sdk/client-cognito-identity-provider": "^3.758.0",
     "@aws-sdk/client-dynamodb": "^3.758.0",
+    "@aws-sdk/util-dynamodb": "^3.812.0",
     "aws-jwt-verify": "^5.0.0",
     "aws-sdk": "^2.1692.0",
     "D": "^1.0.0"

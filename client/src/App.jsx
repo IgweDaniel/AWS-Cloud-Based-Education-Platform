@@ -63,10 +63,7 @@ const App = () => {
                 path="courses/:courseId/start"
                 element={<StartSession />}
               />
-              <Route
-                path="courses/:courseId/meeting/:meetingId"
-                element={<Meet />}
-              />
+              <Route path="courses/:courseId/meeting" element={<Meet />} />
 
               {/* Catch-all route */}
               <Route element={<PrivateRoute allowedRoles={[ROLES.TEACHER]} />}>

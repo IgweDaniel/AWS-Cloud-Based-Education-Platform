@@ -10,7 +10,7 @@ export const ENDPOINTS = {
     join: `${API_BASE_URL}/join-meeting`,
     delete: `${API_BASE_URL}/delete-meeting`,
   },
-  classes: {
+  courses: {
     list: `${API_BASE_URL}/courses`,
     create: `${API_BASE_URL}/courses`,
     details: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
@@ -28,6 +28,7 @@ export const ENDPOINTS = {
       students: (courseId) => `${API_BASE_URL}/courses/${courseId}/students`,
     },
     join: (courseId) => `${API_BASE_URL}/courses/${courseId}/join`,
+    endSession: (courseId) => `${API_BASE_URL}/courses/${courseId}/end-session`,
   },
   users: {
     list: `${API_BASE_URL}/users`,
@@ -38,5 +39,8 @@ export const ENDPOINTS = {
     terms: `${API_BASE_URL}/academic/terms`,
     departments: `${API_BASE_URL}/academic/departments`,
     currentTerm: `${API_BASE_URL}/academic/current-term`,
+  },
+  dashboard: {
+    stats: `${API_BASE_URL}/dashboard/stats`,
   },
 };

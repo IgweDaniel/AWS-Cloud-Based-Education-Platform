@@ -17,15 +17,16 @@ import {
   FaVideo,
   FaVideoSlash,
 } from "react-icons/fa";
-import { FcEndCall } from "react-icons/fc";
+import { MdCallEnd } from "react-icons/md";
 
 import { authenticatedFetch } from "../lib/fetch";
-import { ENDPOINTS, ROUTES } from "../constants";
+import { ENDPOINTS, ROLES, ROUTES } from "../constants";
 
 // UI components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ClipLoader } from "react-spinners";
 
 const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
 const deviceController = new DefaultDeviceController(logger);
@@ -33,7 +34,8 @@ const deviceController = new DefaultDeviceController(logger);
 // TODO: listen for meeting ended event and redirect
 // TODO: call the end meeting session if teacher
 const Meet = () => {
-  const { classId, meetingId } = useParams();
+  const { courseId } = useParams();
+  const [meetingId, setMeetingId] = useState(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [meetingSession, setMeetingSession] = useState(null);
@@ -45,7 +47,7 @@ const Meet = () => {
   const videoGridRef = useRef(null);
   const localVideoRef = useRef(null);
   const [localTileID, setLocalTileID] = useState(null);
-
+  const [isDeleteMeetingLoading, setIsDeleteMeetingLoading] = useState(false);
   useEffect(() => {
     if (!meetingSession) {
       joinMeetingHandler();
@@ -60,6 +62,9 @@ const Meet = () => {
 
   const cleanupMeeting = async () => {
     try {
+      if (user.role == ROLES.TEACHER) {
+        await endMeeting();
+      }
       await Promise.all([
         meetingSession?.audioVideo.stopAudioInput(),
         meetingSession?.audioVideo.stopVideoInput(),
@@ -78,8 +83,7 @@ const Meet = () => {
       const response = await authenticatedFetch(ENDPOINTS.meetings.join, {
         method: "POST",
         body: JSON.stringify({
-          meetingId,
-          classId,
+          courseId,
         }),
       });
 
@@ -99,11 +103,36 @@ const Meet = () => {
       }
 
       const data = await response.json();
+      setMeetingId(data.meeting.Meeting.MeetingId);
       await joinMeeting(data.meeting, data.attendee);
     } catch (error) {
       console.error("Error joining meeting:", error);
       setError(error.message);
       setIsLoading(false);
+    }
+  };
+  const endMeeting = async () => {
+    try {
+      setIsDeleteMeetingLoading(true);
+      const response = await authenticatedFetch(
+        ENDPOINTS.courses.endSession(courseId),
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.statusCode === 404) {
+          return;
+        }
+        throw new Error(error.message || "Failed to delete meeting");
+      }
+    } catch (error) {
+      console.error("Error deleting meeting:", error);
+      setError(error.message);
+    } finally {
+      setIsDeleteMeetingLoading(false);
     }
   };
 
@@ -280,7 +309,7 @@ const Meet = () => {
         meetingSession.eventController.removeObserver(eventObserver);
       }
     };
-  }, [meetingSession,navigate]);
+  }, [meetingSession, navigate]);
 
   useEffect(() => {
     if (meetingSession) {
@@ -361,11 +390,13 @@ const Meet = () => {
       {/* Header */}
       <header className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs px-3 py-1">
-            Meeting ID: {meetingId}
-          </Badge>
+          {meetingId && (
+            <Badge variant="outline" className="text-xs px-3 py-1">
+              Meeting ID: {meetingId}
+            </Badge>
+          )}
           <span className="text-muted-foreground text-xs ml-2">
-            Class: {classId}
+            Class: {courseId}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -438,9 +469,14 @@ const Meet = () => {
             await cleanupMeeting();
             navigate(ROUTES.HOME);
           }}
+          disabled={isDeleteMeetingLoading}
           aria-label="Leave meeting"
         >
-          <FcEndCall className="text-lg" />
+          {isDeleteMeetingLoading ? (
+            <ClipLoader size={20} color="#fff" />
+          ) : (
+            <MdCallEnd className="text-lg" color="#fff" />
+          )}
         </Button>
       </div>
 

@@ -17,7 +17,7 @@ const StartSession = () => {
     const fetchClassData = async () => {
       try {
         const response = await authenticatedFetch(
-          ENDPOINTS.classes.details(courseId)
+          ENDPOINTS.courses.details(courseId)
         );
         const data = await response.json();
         setClassData(data);
@@ -39,11 +39,14 @@ const StartSession = () => {
         method: "POST",
         body: JSON.stringify({ courseId: courseId }),
       });
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed to create meeting");
+      }
+      // const data = await response.json();
       navigate(
         getRouteWithParams(ROUTES.MEET, {
           courseId,
-          meetingId: data.meeting.Meeting.MeetingId,
+          // meetingId: data.meeting.Meeting.MeetingId,
         })
       );
     } catch (err) {

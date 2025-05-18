@@ -230,15 +230,6 @@ functions:
           method: get
           cors: true
 
-  startTeacherSession:
-    handler: handler.startTeacherSession
-    events:
-      - http:
-          path: courses/{courseId}/start-session
-          method: post
-          cors: true
-
-  # TODO: consolidate with deleteMeeting
   endTeacherSession:
     handler: handler.endTeacherSession
     events:
@@ -255,11 +246,11 @@ functions:
           method: get
           cors: true
 
-  joinCourse:
-    handler: handler.joinCourse
+  getDashboardStats:
+    handler: handler.getDashboardStats
     events:
       - http:
-          path: courses/{courseId}/join
+          path: dashboard/stats
           method: get
           cors: true
 
@@ -268,32 +259,6 @@ plugins:
 
 resources:
   Resources:
-    ClassesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: Classes
-        AttributeDefinitions:
-          - AttributeName: classId
-            AttributeType: S
-          - AttributeName: teacherId
-            AttributeType: S
-        KeySchema:
-          - AttributeName: classId
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: TeacherIndex
-            KeySchema:
-              - AttributeName: teacherId
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-
     CoursesTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -338,6 +303,30 @@ resources:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
 
+    # MeetingsTable:
+    #   Type: AWS::DynamoDB::Table
+    #   Properties:
+    #     TableName: Meetings
+    #     AttributeDefinitions:
+    #       - AttributeName: courseId
+    #         AttributeType: S
+    #     KeySchema:
+    #       - AttributeName: courseId
+    #         KeyType: HASH
+    #     GlobalSecondaryIndexes:
+    #       - IndexName: ClassIndex
+    #         KeySchema:
+    #           - AttributeName: courseId
+    #             KeyType: HASH
+    #         Projection:
+    #           ProjectionType: ALL
+    #         ProvisionedThroughput:
+    #           ReadCapacityUnits: 1
+    #           WriteCapacityUnits: 1
+    #     ProvisionedThroughput:
+    #       ReadCapacityUnits: 1
+    #       WriteCapacityUnits: 1
+
     MeetingsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -345,16 +334,20 @@ resources:
         AttributeDefinitions:
           - AttributeName: courseId
             AttributeType: S
+          - AttributeName: meetingId
+            AttributeType: S
         KeySchema:
-          - AttributeName: courseId
+          - AttributeName: courseId # Primary Key: Partition Key
             KeyType: HASH
+          # - AttributeName: meetingId # Primary Key: Sort Key (optional)
+          #   KeyType: RANGE
         GlobalSecondaryIndexes:
-          - IndexName: ClassIndex
+          - IndexName: MeetingIdIndex # GSI to query by meetingId alone
             KeySchema:
-              - AttributeName: courseId
+              - AttributeName: meetingId
                 KeyType: HASH
             Projection:
-              ProjectionType: ALL
+              ProjectionType: ALL # Project all attributes
             ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1

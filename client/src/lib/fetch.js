@@ -4,6 +4,8 @@ export async function authenticatedFetch(url, options = {}) {
   const session = await fetchAuthSession();
   //  const accessToken=session.tokens.accessToken.toString()
   const accessToken = session.tokens.idToken.toString();
+  console.log(accessToken);
+
   return fetch(url, {
     ...options,
     headers: {

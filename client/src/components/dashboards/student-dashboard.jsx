@@ -114,7 +114,7 @@ export const StudentDashboard = () => {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const response = await authenticatedFetch(ENDPOINTS.classes.list);
+        const response = await authenticatedFetch(ENDPOINTS.courses.list);
         const classesData = await response.json();
         setClasses(classesData);
 
@@ -163,7 +163,7 @@ export const StudentDashboard = () => {
           <div className="mt-4 md:mt-0">
             <Button
               variant="outline"
-              className="border-white/30 hover:bg-white/10 text-white"
+              className="border-white/30 hover:bg-white/10 text-black cursor-pointer hover:text-white"
               onClick={() => navigate(ROUTES.COURSES)}
             >
               View All Courses <ChevronRight className="ml-2 h-4 w-4" />
@@ -226,7 +226,7 @@ export const StudentDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {classes.slice(0, 4).map((classItem) => (
                 <ClassCard
-                  key={classItem.classId}
+                  key={classItem.courseId}
                   classItem={classItem}
                   userRole={user?.role}
                 />

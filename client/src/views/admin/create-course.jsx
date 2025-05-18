@@ -83,7 +83,7 @@ export const CreateCourse = () => {
       setLoading(true);
       setError("");
 
-      const response = await authenticatedFetch(ENDPOINTS.classes.create, {
+      const response = await authenticatedFetch(ENDPOINTS.courses.create, {
         method: "POST",
         body: JSON.stringify({ courseName: data.className }),
       });

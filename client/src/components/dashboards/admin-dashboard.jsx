@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Users, Activity, Calendar, Zap } from "lucide-react";
 import { authenticatedFetch } from "@/lib/fetch";
-import { ENDPOINTS, ROLES, ROUTES } from "@/constants";
+import { ENDPOINTS, ROUTES } from "@/constants";
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -16,43 +16,32 @@ export const AdminDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  // In a real app, you would fetch these stats from your backend
+  // Fetch dashboard stats from the backend
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // This is a simplified mock implementation - in production you'd call your API
         setLoading(true);
-        const [classesResponse, usersResponse] = await Promise.all([
-          authenticatedFetch(ENDPOINTS.classes.list),
-          authenticatedFetch(ENDPOINTS.users.list),
-        ]);
+        const response = await authenticatedFetch(ENDPOINTS.dashboard.stats);
 
-        const classes = await classesResponse.json();
-        const users = await usersResponse.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch dashboard stats");
+        }
 
-        // TODO: filter on the handler with pagination
-        const students = users.filter(
-          (user) => user.role === ROLES.STUDENT
-        ).length;
-        const teachers = users.filter(
-          (user) => user.role === ROLES.TEACHER
-        ).length;
-        const activeSessions = classes.filter((c) => cactiveMeetingId).length;
-
+        const statsData = await response.json();
         setStats({
-          totalCourses: classes.length,
-          totalStudents: students,
-          totalTeachers: teachers,
-          activeSessions: activeSessions,
+          totalCourses: statsData.totalCourses,
+          totalStudents: statsData.totalStudents,
+          totalTeachers: statsData.totalTeachers,
+          activeSessions: statsData.activeSessions,
         });
       } catch (error) {
-        console.error("Error fetching stats:", error);
-        // Fallback to dummy data if API fails
+        console.error("Error fetching dashboard stats:", error);
+        // Fallback data with clear indication it's not real data
         setStats({
-          totalCourses: Math.floor(Math.random() * 30) + 10,
-          totalStudents: Math.floor(Math.random() * 200) + 100,
-          totalTeachers: Math.floor(Math.random() * 20) + 10,
-          activeSessions: Math.floor(Math.random() * 5),
+          totalCourses: "N/A",
+          totalStudents: "N/A",
+          totalTeachers: "N/A",
+          activeSessions: "N/A",
         });
       } finally {
         setLoading(false);

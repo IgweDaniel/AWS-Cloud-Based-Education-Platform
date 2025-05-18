@@ -40,7 +40,7 @@ const AssignTeacher = () => {
       try {
         const [teachersResponse, classesResponse] = await Promise.all([
           authenticatedFetch(`${ENDPOINTS.users.list}?role=TEACHER`),
-          authenticatedFetch(ENDPOINTS.classes.list),
+          authenticatedFetch(ENDPOINTS.courses.list),
         ]);
 
         const teachersData = await teachersResponse.json();
@@ -66,7 +66,7 @@ const AssignTeacher = () => {
 
     try {
       const response = await authenticatedFetch(
-        ENDPOINTS.classes.update(selectedCourse),
+        ENDPOINTS.courses.update(selectedCourse),
         {
           method: "PUT",
           body: JSON.stringify({ teacherId: selectedTeacher }),

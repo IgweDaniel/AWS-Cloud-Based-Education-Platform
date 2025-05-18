@@ -51,11 +51,13 @@ const CourseDetail = () => {
         method: "POST",
         body: JSON.stringify({ courseId }),
       });
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Failed to start meeting");
+      }
+      // const data = await response.json();
       navigate(
         getRouteWithParams(ROUTES.MEET, {
           courseId,
-          meetingId: data.meeting.Meeting.MeetingId,
         })
       );
     } catch (error) {
@@ -67,7 +69,7 @@ const CourseDetail = () => {
     const fetchClassData = async () => {
       try {
         const response = await authenticatedFetch(
-          ENDPOINTS.classes.details(courseId)
+          ENDPOINTS.courses.details(courseId)
         );
         if (!response.ok) {
           throw new Error("Failed to fetch class details");
@@ -136,7 +138,7 @@ const CourseDetail = () => {
                         navigate(
                           getRouteWithParams(ROUTES.MEET, {
                             courseId,
-                            meetingId: classData.activeMeetingId,
+                            // meetingId: classData.activeMeetingId,
                           })
                         )
                     : startMeeting
@@ -166,7 +168,7 @@ const CourseDetail = () => {
                   navigate(
                     getRouteWithParams(ROUTES.MEET, {
                       courseId,
-                      meetingId: classData.activeMeetingId,
+                      // meetingId: classData.activeMeetingId,
                     })
                   )
                 }
@@ -235,7 +237,7 @@ const CourseDetail = () => {
                         navigate(
                           getRouteWithParams(ROUTES.MEET, {
                             courseId,
-                            meetingId: classData.activeMeetingId,
+                            // meetingId: classData.activeMeetingId,
                           })
                         )
                       }
