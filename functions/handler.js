@@ -17,12 +17,29 @@ const {
   AdminUpdateUserAttributesCommand,
 } = require("@aws-sdk/client-cognito-identity-provider");
 
+const {
+  S3Client,
+  PutObjectCommand,
+  // GetObjectCommand,
+  DeleteObjectCommand,
+  // HeadObjectCommand,
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
 const { successResponse, errorResponse } = require("./utils/response");
 const dynamoDbUtils = require("./utils/dynamo");
 
 const region = "us-east-1";
 const chimeClient = new ChimeSDKMeetingsClient({
   region,
+});
+
+// S3 bucket for course resources
+const S3_BUCKET_NAME = "cbep-course-resources";
+const s3Client = new S3Client({
+  region,
+  signatureVersion: "v4",
+  s3ForcePathStyle: true,
 });
 
 const { USER_POOL_ID, CLIENT_ID: COGNITO_CLIENT_ID } = process.env;
@@ -1095,3 +1112,178 @@ module.exports.getDashboardStats = async (event) => {
     return errorResponse(error);
   }
 };
+
+// FIXME: use one region,cognito on north chimes on east, move all to east
+/**
+ * Get all resources for a course
+ * @param {Object} event - API Gateway event
+ * @returns {Object} - API Gateway response
+ */
+const getCourseResources = async (event) => {
+  try {
+    // Validate auth token
+    const claims = await verifyToken(event);
+    if (!claims) return errorResponse(401, "Unauthorized");
+
+    // Get courseId from path parameters
+    const { courseId } = event.pathParameters;
+    if (!courseId) return errorResponse(400, "Missing course ID");
+
+    // Get resources from DynamoDB
+    const resources = await dynamoDbUtils.getCourseResources(courseId);
+
+    return successResponse(resources);
+  } catch (error) {
+    console.error("Failed to get course resources:", error);
+    return errorResponse(500, "Failed to get course resources");
+  }
+};
+
+/**
+ * Create a new resource for a course
+ * @param {Object} event - API Gateway event
+ * @returns {Object} - API Gateway response
+ */
+const createCourseResource = async (event) => {
+  try {
+    // Validate auth token
+    const claims = await verifyToken(event);
+    if (!claims) return errorResponse(401, "Unauthorized");
+
+    // Get courseId from path parameters
+    const { courseId } = event.pathParameters;
+    if (!courseId) return errorResponse(400, "Missing course ID");
+
+    // Parse request body
+    const resourceData = JSON.parse(event.body);
+
+    // Validate required fields
+    if (!resourceData.title || !resourceData.url) {
+      return errorResponse(400, "Missing required fields: title, url");
+    }
+
+    // Add resource to DynamoDB
+    const resource = await dynamoDbUtils.addCourseResource(courseId, {
+      ...resourceData,
+      createdBy: claims.sub,
+    });
+
+    return successResponse(resource);
+  } catch (error) {
+    console.error("Failed to create course resource:", error);
+    return errorResponse(500, "Failed to create course resource");
+  }
+};
+
+/**
+ * Delete a resource
+ * @param {Object} event - API Gateway event
+ * @returns {Object} - API Gateway response
+ */
+const deleteCourseResource = async (event) => {
+  try {
+    // Validate auth token
+    const claims = await verifyToken(event);
+    if (!claims) return errorResponse(401, "Unauthorized");
+
+    // Get courseId and resourceId from path parameters
+    const { courseId, resourceId } = event.pathParameters;
+    if (!courseId || !resourceId) {
+      return errorResponse(400, "Missing required path parameters");
+    }
+
+    // Get the resource to check if it has a file in S3
+    const resource = await dynamoDbUtils.getResourceById(courseId, resourceId);
+
+    if (resource && resource.fileKey) {
+      // Delete file from S3
+      try {
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: resource.fileKey,
+          })
+        );
+      } catch (s3Error) {
+        console.error("Failed to delete file from S3:", s3Error);
+        // Continue anyway to delete the resource record
+      }
+    }
+
+    // Delete resource from DynamoDB
+    await dynamoDbUtils.deleteResource(courseId, resourceId);
+
+    return successResponse({ deleted: true });
+  } catch (error) {
+    console.error("Failed to delete course resource:", error);
+    return errorResponse(500, "Failed to delete course resource");
+  }
+};
+
+/**
+ * Generate a pre-signed URL for uploading a file to S3
+ * @param {Object} event - API Gateway event
+ * @returns {Object} - API Gateway response with the upload URL
+ */
+const getResourceUploadUrl = async (event) => {
+  try {
+    // Validate auth token
+    const claims = await verifyToken(event);
+    if (!claims) return errorResponse(401, "Unauthorized");
+
+    // Parse request body to get file metadata
+    const { fileName, fileType, courseId } = JSON.parse(event.body);
+
+    if (!fileName || !fileType || !courseId) {
+      return errorResponse(
+        400,
+        "Missing required fields: fileName, fileType, courseId"
+      );
+    }
+
+    // Create a unique file key
+    const fileKey = `${courseId}/${Date.now()}-${fileName}`;
+
+    // Generate presigned URL
+    const command = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: fileKey,
+      ContentType: fileType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 3600,
+    });
+
+    return successResponse({
+      uploadUrl,
+      fileKey,
+      expiresIn: 3600,
+    });
+  } catch (error) {
+    console.error("Failed to generate upload URL:", error);
+    return errorResponse(500, "Failed to generate upload URL");
+  }
+};
+
+// Helper function to verify the JWT token
+const verifyToken = async (event) => {
+  try {
+    const authHeader =
+      event.headers.Authorization || event.headers.authorization;
+    if (!authHeader) return null;
+
+    const token = authHeader.replace("Bearer ", "");
+    const claims = await verifier.verify(token);
+    return claims;
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return null;
+  }
+};
+
+// Export the resource handlers
+module.exports.getCourseResources = getCourseResources;
+module.exports.createCourseResource = createCourseResource;
+module.exports.deleteCourseResource = deleteCourseResource;
+module.exports.getResourceUploadUrl = getResourceUploadUrl;

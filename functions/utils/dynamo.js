@@ -421,6 +421,93 @@ const getEnrollment = async (courseId, userId) => {
   return response.Item ? unmarshall(response.Item) : null;
 };
 
+/**
+ * Get resources for a course
+ * @param {string} courseId - The ID of the course
+ * @returns {Promise<Array>} - List of resources for the course
+ */
+const getCourseResources = async (courseId) => {
+  const resources = await dynamoDB.query({
+    TableName: "Resources",
+    KeyConditionExpression: "courseId = :courseId",
+    ExpressionAttributeValues: marshall({
+      ":courseId": courseId,
+    }),
+  });
+
+  return resources.Items ? resources.Items.map((item) => unmarshall(item)) : [];
+};
+
+/**
+ * Add a resource to a course
+ * @param {string} courseId - The ID of the course
+ * @param {Object} resource - The resource object to add
+ * @returns {Promise<Object>} - The created resource
+ */
+const addCourseResource = async (courseId, resource) => {
+  const resourceId = resource.resourceId || `res_${Date.now()}`;
+
+  const resourceData = {
+    courseId,
+    resourceId,
+    title: resource.title,
+    description: resource.description || "",
+    type: resource.type || "other",
+    url: resource.url,
+    fileKey: resource.fileKey, // S3 key if applicable
+    size: resource.size || "0 KB",
+    createdAt: new Date().toISOString(),
+    createdBy: resource.createdBy,
+  };
+
+  // console.log({ resourceData });
+
+  await dynamoDB.putItem({
+    TableName: "Resources",
+    Item: marshall(resourceData, {
+      removeUndefinedValues: true, // Remove undefined values from the item
+    }),
+  });
+
+  return resourceData;
+};
+
+/**
+ * Get a resource by its ID
+ * @param {string} courseId - The ID of the course
+ * @param {string} resourceId - The ID of the resource
+ * @returns {Promise<Object|null>} - The resource data or null if not found
+ */
+const getResourceById = async (courseId, resourceId) => {
+  const response = await dynamoDB.getItem({
+    TableName: "Resources",
+    Key: marshall({
+      courseId,
+      resourceId,
+    }),
+  });
+
+  return response.Item ? unmarshall(response.Item) : null;
+};
+
+/**
+ * Delete a resource
+ * @param {string} courseId - The ID of the course
+ * @param {string} resourceId - The ID of the resource
+ * @returns {Promise<boolean>} - True if successful, false otherwise
+ */
+const deleteResource = async (courseId, resourceId) => {
+  await dynamoDB.deleteItem({
+    TableName: "Resources",
+    Key: marshall({
+      courseId,
+      resourceId,
+    }),
+  });
+
+  return true;
+};
+
 module.exports = {
   getCourseById,
   getAllCourses,
@@ -444,4 +531,8 @@ module.exports = {
   getAllMeetings,
   //   getActiveSessionsCount,
   getEnrollment,
+  getCourseResources,
+  addCourseResource,
+  getResourceById,
+  deleteResource,
 };

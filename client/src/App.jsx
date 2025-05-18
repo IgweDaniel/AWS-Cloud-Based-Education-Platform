@@ -32,18 +32,6 @@ import Meet from "./views/meet";
 
 Amplify.configure(awsconfig);
 
-/**
- 
- /login                 # Login page
-/register             # Registration page
-/dashboard            # Role-based dashboard
-/classes              # List of classes
-/classes/:id          # Class details
-/classes/:id/meeting  # Live meeting
-/settings             # User settings
-/admin                # Admin controls
- */
-
 const App = () => {
   return (
     <Router>
@@ -66,9 +54,9 @@ const App = () => {
               <Route path="courses/:courseId/meeting" element={<Meet />} />
 
               {/* Catch-all route */}
-              <Route element={<PrivateRoute allowedRoles={[ROLES.TEACHER]} />}>
-                {/* <Route index element={<Dashboard />} /> */}
-              </Route>
+              <Route
+                element={<PrivateRoute allowedRoles={[ROLES.TEACHER]} />}
+              ></Route>
               <Route
                 element={
                   <PrivateRoute

@@ -18,6 +18,13 @@ export const ENDPOINTS = {
     removeStudent: (courseId) => `${API_BASE_URL}/courses/${courseId}/student`,
     update: (courseId) => `${API_BASE_URL}/courses/${courseId}/teacher`,
     metadata: `${API_BASE_URL}/courses/metadata`,
+    resources: {
+      list: (courseId) => `${API_BASE_URL}/courses/${courseId}/resources`,
+      create: (courseId) => `${API_BASE_URL}/courses/${courseId}/resources`,
+      delete: (courseId, resourceId) =>
+        `${API_BASE_URL}/courses/${courseId}/resources/${resourceId}`,
+      uploadUrl: `${API_BASE_URL}/resources/upload-url`,
+    },
     teacher: {
       list: `${API_BASE_URL}/courses/teacher`,
       activeSessions: `${API_BASE_URL}/courses/teacher/active-sessions`,

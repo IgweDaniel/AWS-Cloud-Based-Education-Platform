@@ -16,34 +16,60 @@ import {
   Users,
   Video,
   CheckCircle2,
+  Trash2,
+  Plus,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+const getResourceUrl = (resource) => {
+  // If it's an external URL (contains http:// or https://)
+  if (
+    resource.url &&
+    (resource.url.startsWith("http://") || resource.url.startsWith("https://"))
+  ) {
+    return resource.url;
+  }
+
+  // If it's a file key, construct the S3 URL
+  if (resource.fileKey) {
+    return `${import.meta.env.VITE_UPLOAD_BASE_URL}/${resource.fileKey}`;
+  }
+
+  // Fallback to whatever URL is stored
+  return resource.url;
+};
 
 const CourseDetail = () => {
-  console.log({ ROLES });
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [classData, setClassData] = useState(null);
+  const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
   const [error, setError] = useState(null);
-  console.log({ user });
-  // Simplified mock resources for a basic UI
-  const resources = [
-    {
-      id: 1,
-      title: "Course Syllabus",
-      type: "pdf",
-      size: "245 KB",
-      date: "2025-01-15",
-    },
-    {
-      id: 2,
-      title: "Lecture Slides Week 10",
-      type: "ppt",
-      size: "3.2 MB",
-      date: "2025-04-01",
-    },
-  ];
+  const [resourceError, setResourceError] = useState(null);
+  const [isAddResourceDialogOpen, setIsAddResourceDialogOpen] = useState(false);
+  const [newResource, setNewResource] = useState({
+    title: "",
+    description: "",
+    url: "",
+  });
+  const [uploadFile, setUploadFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [resourceAddError, setResourceAddError] = useState(null);
+  const [resourceSuccess, setResourceSuccess] = useState(null);
+  const [deletingResourceId, setDeletingResourceId] = useState(null);
 
   const startMeeting = async () => {
     try {
@@ -54,7 +80,6 @@ const CourseDetail = () => {
       if (!response.ok) {
         throw new Error("Failed to start meeting");
       }
-      // const data = await response.json();
       navigate(
         getRouteWithParams(ROUTES.MEET, {
           courseId,
@@ -65,6 +90,7 @@ const CourseDetail = () => {
     }
   };
 
+  // Fetch course details
   useEffect(() => {
     const fetchClassData = async () => {
       try {
@@ -87,6 +113,217 @@ const CourseDetail = () => {
     fetchClassData();
   }, [courseId]);
 
+  // Fetch course resources
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        setResourcesLoading(true);
+        const response = await authenticatedFetch(
+          ENDPOINTS.courses.resources.list(courseId)
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch resources");
+        }
+        const data = await response.json();
+        setResources(data);
+      } catch (err) {
+        console.error("Error fetching resources:", err);
+        setResourceError(err.message);
+      } finally {
+        setResourcesLoading(false);
+      }
+    };
+
+    fetchResources();
+  }, [courseId]);
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "Unknown size";
+
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
+    else return (bytes / 1073741824).toFixed(1) + " GB";
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "Unknown date";
+
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  const getFileTypeFromName = (fileName) => {
+    if (!fileName) return "file";
+
+    const extension = fileName.split(".").pop().toLowerCase();
+
+    switch (extension) {
+      case "pdf":
+        return "pdf";
+      case "doc":
+      case "docx":
+        return "doc";
+      case "ppt":
+      case "pptx":
+        return "ppt";
+      case "xls":
+      case "xlsx":
+        return "xls";
+      case "jpg":
+      case "jpeg":
+      case "png":
+      case "gif":
+        return "image";
+      case "mp4":
+      case "mov":
+      case "avi":
+        return "video";
+      default:
+        return "file";
+    }
+  };
+
+  const handleAddResource = async (e) => {
+    e.preventDefault();
+
+    setIsUploading(true);
+    setResourceAddError(null);
+
+    try {
+      let resourceData = { ...newResource };
+
+      // If a file was selected, upload it first
+      if (uploadFile) {
+        // 1. Get a pre-signed URL from the server
+        const uploadUrlResponse = await authenticatedFetch(
+          ENDPOINTS.courses.resources.uploadUrl,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              fileName: uploadFile.name,
+              fileType: uploadFile.type,
+              courseId: courseId,
+            }),
+          }
+        );
+
+        if (!uploadUrlResponse.ok) {
+          throw new Error("Failed to get upload URL");
+        }
+
+        const { uploadUrl, fileKey } = await uploadUrlResponse.json();
+
+        // 2. Upload the file directly to S3 using the pre-signed URL
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          body: uploadFile,
+          headers: {
+            "Content-Type": uploadFile.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file");
+        }
+
+        // 3. Create resource with file information
+        resourceData = {
+          ...resourceData,
+          fileKey: fileKey,
+          // The URL will be properly constructed on the backend
+          url: fileKey, // The backend will handle the full URL
+          type: getFileTypeFromName(uploadFile.name),
+          size: uploadFile.size,
+        };
+      }
+
+      // Create the resource in the database
+      const createResponse = await authenticatedFetch(
+        ENDPOINTS.courses.resources.create(courseId),
+        {
+          method: "POST",
+          body: JSON.stringify(resourceData),
+        }
+      );
+
+      if (!createResponse.ok) {
+        throw new Error("Failed to create resource");
+      }
+
+      // Get the created resource and add it to the state
+      const createdResource = await createResponse.json();
+      setResources([...resources, createdResource]);
+
+      // Reset form and close dialog
+      setNewResource({ title: "", description: "", url: "" });
+      setUploadFile(null);
+      setIsAddResourceDialogOpen(false);
+      setResourceSuccess("Resource added successfully");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setResourceSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error adding resource:", err);
+      setResourceAddError(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteResource = async (resourceId) => {
+    setDeletingResourceId(resourceId);
+
+    try {
+      const response = await authenticatedFetch(
+        ENDPOINTS.courses.resources.delete(courseId, resourceId),
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete resource");
+      }
+
+      // Remove the resource from the state
+      setResources(
+        resources.filter((resource) => resource.resourceId !== resourceId)
+      );
+      setResourceSuccess("Resource deleted successfully");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setResourceSuccess(null), 3000);
+    } catch (err) {
+      console.error("Error deleting resource:", err);
+      setResourceError(err.message);
+
+      // Clear error after 3 seconds
+      setTimeout(() => setResourceError(null), 3000);
+    } finally {
+      setDeletingResourceId(null);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadFile(e.target.files[0]);
+
+      // Auto-fill title with file name without extension if title is empty
+      if (!newResource.title) {
+        const fileName = e.target.files[0].name;
+        const titleWithoutExtension = fileName
+          .split(".")
+          .slice(0, -1)
+          .join(".");
+        setNewResource({
+          ...newResource,
+          title: titleWithoutExtension || fileName,
+        });
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -106,7 +343,7 @@ const CourseDetail = () => {
 
   const isTeacher =
     user.role === ROLES.TEACHER && classData.teacherId === user.userId;
-  // const isAdmin = user.role === ROLES.SUPER_ADMIN;
+  const canManageResources = isTeacher || user.role === ROLES.SUPER_ADMIN;
 
   return (
     <div className="space-y-8">
@@ -116,7 +353,7 @@ const CourseDetail = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-bold campus-text-gradient">
-                {classData.className}
+                {classData.courseName}
               </h1>
               {classData.activeMeetingId && (
                 <Badge variant="success" className="text-xs">
@@ -125,7 +362,7 @@ const CourseDetail = () => {
               )}
             </div>
             <p className="text-muted-foreground mt-2">
-              Course ID: {classData.classId}
+              Course ID: {classData.courseId}
             </p>
           </div>
 
@@ -138,7 +375,6 @@ const CourseDetail = () => {
                         navigate(
                           getRouteWithParams(ROUTES.MEET, {
                             courseId,
-                            // meetingId: classData.activeMeetingId,
                           })
                         )
                     : startMeeting
@@ -168,7 +404,6 @@ const CourseDetail = () => {
                   navigate(
                     getRouteWithParams(ROUTES.MEET, {
                       courseId,
-                      // meetingId: classData.activeMeetingId,
                     })
                   )
                 }
@@ -237,7 +472,6 @@ const CourseDetail = () => {
                         navigate(
                           getRouteWithParams(ROUTES.MEET, {
                             courseId,
-                            // meetingId: classData.activeMeetingId,
                           })
                         )
                       }
@@ -333,41 +567,242 @@ const CourseDetail = () => {
           </Card>
         </TabsContent>
 
-        {/* Resources Tab - Simplified */}
+        {/* Resources Tab - Now showing real resources */}
         <TabsContent value="resources">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Course Resources</CardTitle>
+                {canManageResources && (
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddResourceDialogOpen(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Resource
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {resources.map((resource) => (
-                  <div
-                    key={resource.id}
-                    className="flex items-center p-3 border rounded-md hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="p-2 bg-primary/10 rounded-full mr-3">
-                      <FileText className="h-5 w-5 text-primary" />
+              {resourceSuccess && (
+                <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
+                  <AlertDescription>{resourceSuccess}</AlertDescription>
+                </Alert>
+              )}
+
+              {resourceError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{resourceError}</AlertDescription>
+                </Alert>
+              )}
+
+              {resourcesLoading ? (
+                <div className="flex justify-center py-8">
+                  <ClipLoader size={30} color="#0f4c81" />
+                </div>
+              ) : resources.length > 0 ? (
+                <div className="space-y-2">
+                  {resources.map((resource) => (
+                    <div
+                      key={resource.resourceId}
+                      className="flex items-center p-3 border rounded-md hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="p-2 bg-primary/10 rounded-full mr-3">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-grow">
+                        <h3 className="font-medium">{resource.title}</h3>
+                        {resource.description && (
+                          <p className="text-sm text-muted-foreground mb-1">
+                            {resource.description}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                          {resource.type && `${resource.type.toUpperCase()} • `}
+                          {resource.size &&
+                            `${formatFileSize(resource.size)} • `}
+                          Added {formatDate(resource.createdAt)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            window.open(getResourceUrl(resource), "_blank")
+                          }
+                        >
+                          Download
+                        </Button>
+
+                        {canManageResources && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                            onClick={() =>
+                              handleDeleteResource(resource.resourceId)
+                            }
+                            disabled={
+                              deletingResourceId === resource.resourceId
+                            }
+                          >
+                            {deletingResourceId === resource.resourceId ? (
+                              <ClipLoader size={16} color="#ef4444" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-grow">
-                      <h3 className="font-medium">{resource.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {resource.type.toUpperCase()} • {resource.size} • Added{" "}
-                        {resource.date}
-                      </p>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No resources available for this course.
+                  {canManageResources && (
+                    <div className="mt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsAddResourceDialogOpen(true)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Your First Resource
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      Download
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Resource Dialog */}
+      <Dialog
+        open={isAddResourceDialogOpen}
+        onOpenChange={setIsAddResourceDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Course Resource</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleAddResource} className="space-y-4">
+            {resourceAddError && (
+              <Alert variant="destructive">
+                <AlertDescription>{resourceAddError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={newResource.title}
+                onChange={(e) =>
+                  setNewResource({ ...newResource, title: e.target.value })
+                }
+                placeholder="Resource title"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (optional)</Label>
+              <Textarea
+                id="description"
+                value={newResource.description}
+                onChange={(e) =>
+                  setNewResource({
+                    ...newResource,
+                    description: e.target.value,
+                  })
+                }
+                placeholder="Describe this resource"
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Choose an option</Label>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div
+                  className={`border rounded-md p-4 ${
+                    !uploadFile ? "bg-muted/50" : ""
+                  }`}
+                >
+                  <Label htmlFor="file" className="block mb-2 font-medium">
+                    Upload a file
+                  </Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    onChange={handleFileChange}
+                    className="mb-2"
+                  />
+                  {uploadFile && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: {uploadFile.name} (
+                      {formatFileSize(uploadFile.size)})
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  className={`border rounded-md p-4 ${
+                    uploadFile ? "bg-muted/50" : ""
+                  }`}
+                >
+                  <Label htmlFor="url" className="block mb-2 font-medium">
+                    Or provide a URL
+                  </Label>
+                  <Input
+                    id="url"
+                    value={newResource.url}
+                    onChange={(e) =>
+                      setNewResource({ ...newResource, url: e.target.value })
+                    }
+                    placeholder="https://"
+                    disabled={!!uploadFile}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAddResourceDialogOpen(false)}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isUploading ||
+                  (!uploadFile && !newResource.url) ||
+                  !newResource.title
+                }
+              >
+                {isUploading ? (
+                  <>
+                    <ClipLoader size={16} color="#fff" className="mr-2" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Add Resource"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

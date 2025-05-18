@@ -8,6 +8,7 @@ provider:
     USER_POOL_ID: ${param:USER_POOL_ID}
     CLIENT_ID: ${param:CLIENT_ID}
     FRONTEND_URL: ${param:FRONTEND_URL, 'https://cbep-client.vercel.app'}
+    BUCKET_NAME: cbep-course-resources
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -36,6 +37,17 @@ provider:
         - arn:aws:dynamodb:${self:provider.region}:*:table/Enrollments
         - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings
         - arn:aws:dynamodb:${self:provider.region}:*:table/Meetings/index/*
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Resources
+        - arn:aws:dynamodb:${self:provider.region}:*:table/Resources/index/*
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+        - s3:DeleteObject
+        - s3:ListBucket
+      Resource:
+        - arn:aws:s3:::cbep-course-resources
+        - arn:aws:s3:::cbep-course-resources/*
     - Effect: Allow
       Action:
         - cognito-idp:AdminCreateUser
@@ -46,6 +58,26 @@ provider:
       Resource:
         - arn:aws:cognito-idp:eu-north-1:*:userpool/${self:provider.environment.USER_POOL_ID}
         - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${self:provider.environment.USER_POOL_ID}
+  # s3:
+  #   bucketOne:
+  #     name: ${self:provider.environment.BUCKET_NAME}
+  #     versioningConfiguration:
+  #       Status: Enabled
+  #     accessControl: PublicRead
+  #     corsConfiguration:
+  #       CorsRules:
+  #         - AllowedHeaders:
+  #             - "*"
+  #           AllowedMethods:
+  #             - GET
+  #             - PUT
+  #             - POST
+  #             - DELETE
+  #             - HEAD
+  #           AllowedOrigins:
+  #             - ${self:provider.environment.FRONTEND_URL}
+  #             - http://localhost:5173
+  #           MaxAge: 3000
 
 functions:
   chimeEventHandler:
@@ -88,6 +120,51 @@ functions:
             parameters:
               paths:
                 meetingId: true
+
+  getCourseResources:
+    handler: handler.getCourseResources
+    events:
+      - http:
+          path: courses/{courseId}/resources
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
+
+  createCourseResource:
+    handler: handler.createCourseResource
+    events:
+      - http:
+          path: courses/{courseId}/resources
+          method: post
+          cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
+
+  deleteCourseResource:
+    handler: handler.deleteCourseResource
+    events:
+      - http:
+          path: courses/{courseId}/resources/{resourceId}
+          method: delete
+          cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
+                resourceId: true
+
+  getResourceUploadUrl:
+    handler: handler.getResourceUploadUrl
+    events:
+      - http:
+          path: resources/upload-url
+          method: post
+          cors: true
 
   createMeeting:
     handler: handler.createMeeting
@@ -303,30 +380,6 @@ resources:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
 
-    # MeetingsTable:
-    #   Type: AWS::DynamoDB::Table
-    #   Properties:
-    #     TableName: Meetings
-    #     AttributeDefinitions:
-    #       - AttributeName: courseId
-    #         AttributeType: S
-    #     KeySchema:
-    #       - AttributeName: courseId
-    #         KeyType: HASH
-    #     GlobalSecondaryIndexes:
-    #       - IndexName: ClassIndex
-    #         KeySchema:
-    #           - AttributeName: courseId
-    #             KeyType: HASH
-    #         Projection:
-    #           ProjectionType: ALL
-    #         ProvisionedThroughput:
-    #           ReadCapacityUnits: 1
-    #           WriteCapacityUnits: 1
-    #     ProvisionedThroughput:
-    #       ReadCapacityUnits: 1
-    #       WriteCapacityUnits: 1
-
     MeetingsTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -354,3 +407,66 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
+
+    ResourcesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Resources
+        AttributeDefinitions:
+          - AttributeName: courseId
+            AttributeType: S
+          - AttributeName: resourceId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: courseId
+            KeyType: HASH
+          - AttributeName: resourceId
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+    # ResourcesBucketPolicy:
+
+    CourseResourcesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.BUCKET_NAME}
+        AccessControl: Private
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              AllowedOrigins:
+                - ${self:provider.environment.FRONTEND_URL}
+                - http://localhost:5173
+              MaxAge: 3000
+              ExposedHeaders:
+                - ETag
+                - x-amz-server-side-encryption
+                - x-amz-request-id
+                - x-amz-id-2
+
+    CourseResourcesBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref CourseResourcesBucket
+        PolicyDocument:
+          Statement:
+            - Sid: AllowGetObjectWithReferer
+              Effect: Allow
+              Principal: "*"
+              Action: "s3:GetObject"
+              Resource:
+                !Join ["", ["arn:aws:s3:::", !Ref CourseResourcesBucket, "/*"]]
+              Condition:
+                StringLike:
+                  "aws:Referer":
+                    - ${self:provider.environment.FRONTEND_URL}/*
+                    - http://localhost:5173/*
