@@ -134,7 +134,7 @@ export const LecturerDashboard = () => {
               <span className="text-white/70 text-sm">Teaching</span>
             </div>
             <p className="text-2xl font-bold">
-              {loading ? "--" : teachingStats.totalCourses} courses
+              {loading ? "..." : teachingStats.totalCourses} courses
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
@@ -143,7 +143,7 @@ export const LecturerDashboard = () => {
               <span className="text-white/70 text-sm">Students</span>
             </div>
             <p className="text-2xl font-bold">
-              {loading ? "--" : teachingStats.totalStudents}
+              {loading ? "..." : teachingStats.totalStudents}
             </p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
@@ -152,7 +152,7 @@ export const LecturerDashboard = () => {
               <span className="text-white/70 text-sm">Active</span>
             </div>
             <p className="text-2xl font-bold">
-              {loading ? "--" : teachingStats.activeClasses} sessions
+              {loading ? "..." : teachingStats.activeClasses} sessions
             </p>
           </div>
         </div>

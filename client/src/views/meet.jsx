@@ -16,6 +16,7 @@ import {
   FaMicrophoneSlash,
   FaVideo,
   FaVideoSlash,
+  FaCog,
 } from "react-icons/fa";
 import { MdCallEnd } from "react-icons/md";
 
@@ -27,6 +28,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ClipLoader } from "react-spinners";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
 const deviceController = new DefaultDeviceController(logger);
@@ -48,6 +63,15 @@ const Meet = () => {
   const localVideoRef = useRef(null);
   const [localTileID, setLocalTileID] = useState(null);
   const [isDeleteMeetingLoading, setIsDeleteMeetingLoading] = useState(false);
+
+  // Device selection states
+  const [audioInputDevices, setAudioInputDevices] = useState([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState([]);
+  const [videoInputDevices, setVideoInputDevices] = useState([]);
+  const [selectedAudioInput, setSelectedAudioInput] = useState(null);
+  const [selectedAudioOutput, setSelectedAudioOutput] = useState(null);
+  const [selectedVideoInput, setSelectedVideoInput] = useState(null);
+
   useEffect(() => {
     if (!meetingSession) {
       joinMeetingHandler();
@@ -176,6 +200,10 @@ const Meet = () => {
       await meetingSession.audioVideo.listAudioOutputDevices();
     const videoInputDevices =
       await meetingSession.audioVideo.listVideoInputDevices();
+
+    setAudioInputDevices(audioInputDevices);
+    setAudioOutputDevices(audioOutputDevices);
+    setVideoInputDevices(videoInputDevices);
 
     if (audioInputDevices.length > 0) {
       await meetingSession.audioVideo.startAudioInput(
@@ -478,6 +506,111 @@ const Meet = () => {
             <MdCallEnd className="text-lg" color="#fff" />
           )}
         </Button>
+        {/* Device settings button */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Device settings"
+            >
+              <FaCog />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="p-4" side="right">
+            <SheetHeader>
+              <SheetTitle>Device Settings</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col gap-4">
+              {/* Audio Input Device Selector */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
+                  Audio Input
+                </label>
+                <Select
+                  value={selectedAudioInput?.deviceId}
+                  onValueChange={async (deviceId) => {
+                    setSelectedAudioInput(
+                      audioInputDevices.find((device) => device.deviceId === deviceId)
+                    );
+                    if (meetingSession) {
+                      await meetingSession.audioVideo.startAudioInput(deviceId);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an audio input device" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {audioInputDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Audio Output Device Selector */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
+                  Audio Output
+                </label>
+                <Select
+                  value={selectedAudioOutput?.deviceId}
+                  onValueChange={async (deviceId) => {
+                    setSelectedAudioOutput(
+                      audioOutputDevices.find((device) => device.deviceId === deviceId)
+                    );
+                    if (meetingSession) {
+                      await meetingSession.audioVideo.chooseAudioOutput(deviceId);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an audio output device" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {audioOutputDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Video Input Device Selector */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
+                  Video Input
+                </label>
+                <Select
+                  value={selectedVideoInput?.deviceId}
+                  onValueChange={async (deviceId) => {
+                    setSelectedVideoInput(
+                      videoInputDevices.find((device) => device.deviceId === deviceId)
+                    );
+                    if (meetingSession) {
+                      await meetingSession.audioVideo.startVideoInput(deviceId);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a video input device" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {videoInputDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
 
       {/* Loading Overlay */}
