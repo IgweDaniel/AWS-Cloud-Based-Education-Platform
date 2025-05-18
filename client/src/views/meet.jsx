@@ -61,6 +61,7 @@ const Meet = () => {
   const [error, setError] = useState(null);
   const videoGridRef = useRef(null);
   const localVideoRef = useRef(null);
+  const audioElementRef = useRef(null);
   const [localTileID, setLocalTileID] = useState(null);
   const [isDeleteMeetingLoading, setIsDeleteMeetingLoading] = useState(false);
 
@@ -176,6 +177,19 @@ const Meet = () => {
       // Initialize devices
       await initializeDevices(meetingSession);
 
+      // Bind audio element if available
+      if (audioElementRef.current) {
+        try {
+          await meetingSession.audioVideo.bindAudioElement(
+            audioElementRef.current
+          );
+          console.log("Successfully bound audio element");
+        } catch (e) {
+          console.error("Failed to bind audio element", e);
+          // Continue anyway, as video might still work
+        }
+      }
+
       // Start meeting
       meetingSession.audioVideo.start();
       meetingSession.audioVideo.startLocalVideoTile();
@@ -205,19 +219,42 @@ const Meet = () => {
     setAudioOutputDevices(audioOutputDevices);
     setVideoInputDevices(videoInputDevices);
 
-    if (audioInputDevices.length > 0) {
-      await meetingSession.audioVideo.startAudioInput(
-        audioInputDevices[0].deviceId
-      );
-    }
-    if (audioOutputDevices.length > 0) {
-      await meetingSession.audioVideo.chooseAudioOutput(
-        audioOutputDevices[0].deviceId
-      );
-    }
-    if (videoInputDevices.length > 0) {
-      await meetingSession.audioVideo.startVideoInput(
-        videoInputDevices[0].deviceId
+    try {
+      // Set up default audio input if available
+      if (audioInputDevices.length > 0) {
+        const defaultDevice = audioInputDevices[0];
+        await meetingSession.audioVideo.startAudioInput(defaultDevice.deviceId);
+        setSelectedAudioInput(defaultDevice);
+        console.log("Using audio input device:", defaultDevice.label);
+      } else {
+        console.warn("No audio input devices found!");
+      }
+
+      // Set up default audio output if available
+      if (audioOutputDevices.length > 0) {
+        const defaultDevice = audioOutputDevices[0];
+        await meetingSession.audioVideo.chooseAudioOutput(
+          defaultDevice.deviceId
+        );
+        setSelectedAudioOutput(defaultDevice);
+        console.log("Using audio output device:", defaultDevice.label);
+      } else {
+        console.warn("No audio output devices found!");
+      }
+
+      // Set up default video input if available
+      if (videoInputDevices.length > 0) {
+        const defaultDevice = videoInputDevices[0];
+        await meetingSession.audioVideo.startVideoInput(defaultDevice.deviceId);
+        setSelectedVideoInput(defaultDevice);
+        console.log("Using video input device:", defaultDevice.label);
+      } else {
+        console.warn("No video input devices found!");
+      }
+    } catch (err) {
+      console.error("Error initializing devices:", err);
+      setError(
+        "Failed to access media devices. Please ensure you've granted browser permissions."
       );
     }
   };
@@ -226,9 +263,19 @@ const Meet = () => {
   const toggleAudio = async () => {
     if (meetingSession) {
       if (isMuted) {
-        await meetingSession.audioVideo.resubscribe();
+        // Unmute: Start audio input again
+        if (selectedAudioInput) {
+          await meetingSession.audioVideo.startAudioInput(
+            selectedAudioInput.deviceId
+          );
+        } else if (audioInputDevices.length > 0) {
+          await meetingSession.audioVideo.startAudioInput(
+            audioInputDevices[0].deviceId
+          );
+        }
       } else {
-        await meetingSession.audioVideo.unsubscribe();
+        // Mute: Stop audio input
+        await meetingSession.audioVideo.stopAudioInput();
       }
       setIsMuted(!isMuted);
     }
@@ -316,15 +363,27 @@ const Meet = () => {
         // Handle a meeting event.
         switch (name) {
           case "meetingEnded":
-            console.log(`Meeting has ended ${attributes} in `, attributes);
+            console.log("Meeting has ended", attributes);
             navigate(ROUTES.DASHBOARD, {
               state: {
-                message: "This meeting has ended",
+                message: "The meeting has ended",
               },
             });
             break;
-
+          case "audioInputFailed":
+            console.error("Audio input failed", attributes);
+            setError(
+              "Audio input failed. Please check your microphone settings."
+            );
+            break;
+          case "audioOutputFailed":
+            console.error("Audio output failed", attributes);
+            setError(
+              "Audio output failed. Please check your speaker settings."
+            );
+            break;
           default:
+            console.log(`Received event: ${name}`, attributes);
             break;
         }
       },
@@ -347,6 +406,14 @@ const Meet = () => {
       );
     }
   }, [meetingSession, localTileID]);
+
+  // After meeting session creation, let's set up audio
+  useEffect(() => {
+    if (meetingSession && audioElementRef.current) {
+      // Bind audio output to the audio element
+      meetingSession.audioVideo.bindAudioElement(audioElementRef.current);
+    }
+  }, [meetingSession]);
 
   // Effect to bind video tiles to HTML video elements
   useEffect(() => {
@@ -509,11 +576,7 @@ const Meet = () => {
         {/* Device settings button */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Device settings"
-            >
+            <Button variant="outline" size="icon" aria-label="Device settings">
               <FaCog />
             </Button>
           </SheetTrigger>
@@ -531,7 +594,9 @@ const Meet = () => {
                   value={selectedAudioInput?.deviceId}
                   onValueChange={async (deviceId) => {
                     setSelectedAudioInput(
-                      audioInputDevices.find((device) => device.deviceId === deviceId)
+                      audioInputDevices.find(
+                        (device) => device.deviceId === deviceId
+                      )
                     );
                     if (meetingSession) {
                       await meetingSession.audioVideo.startAudioInput(deviceId);
@@ -559,11 +624,24 @@ const Meet = () => {
                 <Select
                   value={selectedAudioOutput?.deviceId}
                   onValueChange={async (deviceId) => {
-                    setSelectedAudioOutput(
-                      audioOutputDevices.find((device) => device.deviceId === deviceId)
+                    const device = audioOutputDevices.find(
+                      (device) => device.deviceId === deviceId
                     );
-                    if (meetingSession) {
-                      await meetingSession.audioVideo.chooseAudioOutput(deviceId);
+                    setSelectedAudioOutput(device);
+                    if (meetingSession && device) {
+                      try {
+                        await meetingSession.audioVideo.chooseAudioOutput(
+                          device.deviceId
+                        );
+                        // Re-bind the audio element after changing the output device
+                        if (audioElementRef.current) {
+                          meetingSession.audioVideo.bindAudioElement(
+                            audioElementRef.current
+                          );
+                        }
+                      } catch (err) {
+                        console.error("Failed to set audio output device", err);
+                      }
                     }
                   }}
                 >
@@ -589,7 +667,9 @@ const Meet = () => {
                   value={selectedVideoInput?.deviceId}
                   onValueChange={async (deviceId) => {
                     setSelectedVideoInput(
-                      videoInputDevices.find((device) => device.deviceId === deviceId)
+                      videoInputDevices.find(
+                        (device) => device.deviceId === deviceId
+                      )
                     );
                     if (meetingSession) {
                       await meetingSession.audioVideo.startVideoInput(deviceId);
@@ -613,7 +693,9 @@ const Meet = () => {
         </Sheet>
       </div>
 
-      {/* Loading Overlay */}
+      {/* Audio element (hidden) */}
+      <audio ref={audioElementRef} style={{ display: "none" }} />
+
       {isLoading && (
         <div className="fixed inset-0 bg-background/90 flex items-center justify-center z-50">
           <span className="text-xl font-semibold text-primary animate-pulse">
