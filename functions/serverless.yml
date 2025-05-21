@@ -7,7 +7,7 @@ provider:
   environment:
     USER_POOL_ID: ${param:USER_POOL_ID}
     CLIENT_ID: ${param:CLIENT_ID}
-    FRONTEND_URL: ${param:FRONTEND_URL, 'https://cbep-client.vercel.app'}
+    FRONTEND_URL: ${param:FRONTEND_URL, 'https://cbep.vercel.app'}
     BUCKET_NAME: cbep-course-resources
   iamRoleStatements:
     - Effect: Allow

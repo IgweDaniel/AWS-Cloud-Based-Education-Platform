@@ -23,7 +23,7 @@ export const ROUTES = {
   MEET_STAGING: "/courses/:courseId/start",
 
   // Admin routes
-  ADMIN_CREATE_COURSE: "/admin/create-course",
+  ADMIN_CREATE_COURSE: "/create-course",
   ADMIN_CREATE_USER: "/create-user",
   ADMIN_EDIT_USER: "/users/:userId/edit",
   ADMIN_USERS_LIST: "/users",
