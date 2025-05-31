@@ -58,26 +58,7 @@ provider:
       Resource:
         - arn:aws:cognito-idp:eu-north-1:*:userpool/${self:provider.environment.USER_POOL_ID}
         - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${self:provider.environment.USER_POOL_ID}
-  # s3:
-  #   bucketOne:
-  #     name: ${self:provider.environment.BUCKET_NAME}
-  #     versioningConfiguration:
-  #       Status: Enabled
-  #     accessControl: PublicRead
-  #     corsConfiguration:
-  #       CorsRules:
-  #         - AllowedHeaders:
-  #             - "*"
-  #           AllowedMethods:
-  #             - GET
-  #             - PUT
-  #             - POST
-  #             - DELETE
-  #             - HEAD
-  #           AllowedOrigins:
-  #             - ${self:provider.environment.FRONTEND_URL}
-  #             - http://localhost:5173
-  #           MaxAge: 3000
+
 
 functions:
   chimeEventHandler:
@@ -89,14 +70,7 @@ functions:
               - "aws.chime"
             detail-type:
               - "Chime Meeting State Change" # Adjust for specific events (e.g., "Chime Meeting Ended")
-  # checkMeetingStatus:
-  #   handler: handler.checkMeetingStatus
-  #   events:
-  #     - schedule:
-  #         rate: rate(5 minutes)
-  #         enabled: false
-  #         description: "Check and clean up stale meetings every 5 minutes"
-
+              
   updateCourseTeacher:
     handler: handler.updateCourseTeacher
     events:
@@ -178,8 +152,8 @@ functions:
     handler: handler.joinMeeting
     events:
       - http:
-          path: join-meeting
-          method: post
+          path: courses/{courseId}/join
+          method: get
           cors: true
 
   assignRole:
@@ -314,6 +288,10 @@ functions:
           path: courses/{courseId}/end-session
           method: post
           cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
 
   getCourseStudents:
     handler: handler.getCourseStudents
@@ -322,6 +300,10 @@ functions:
           path: courses/{courseId}/students
           method: get
           cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
 
   getDashboardStats:
     handler: handler.getDashboardStats

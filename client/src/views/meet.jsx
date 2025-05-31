@@ -105,12 +105,13 @@ const Meet = () => {
   const joinMeetingHandler = async () => {
     try {
       setIsLoading(true);
-      const response = await authenticatedFetch(ENDPOINTS.meetings.join, {
-        method: "POST",
-        body: JSON.stringify({
-          courseId,
-        }),
-      });
+      console.log("joinMeet", ENDPOINTS.courses.join(courseId));
+      const response = await authenticatedFetch(
+        ENDPOINTS.courses.join(courseId),
+        {
+          method: "GET",
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();

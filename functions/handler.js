@@ -122,7 +122,9 @@ function createAttendee(meetingId, externalUserId) {
 
 const authenticate = async (event) => {
   try {
+    console.log({ env: process.env });
     const token = event.headers.Authorization?.replace("Bearer ", "");
+    console.log({ token });
     if (!token) {
       throw new Error("No token provided");
     }
@@ -175,19 +177,41 @@ const assignUserRole = async (username, role) => {
   }
 };
 
-const verifyCourseAccess = async (userId, userRole, courseId) => {
-  // Check if student is enrolled
-  const isEnrolled = await dynamoDbUtils.isStudentEnrolled(courseId, userId);
+// This function would be located somewhere in your handler.js file
 
-  if (!isEnrolled) {
-    // If not enrolled, check if user is the teacher or a super admin
-    const courseData = await dynamoDbUtils.getCourseById(courseId);
+/**
+ * Verify if a user has access to a course
+ * @param {string} userId - The user ID
+ * @param {string} userRole - The user role
+ * @param {string} courseId - The course ID
+ * @returns {Promise<void>}
+ * @throws {Error} If the user doesn't have access
+ */
+async function verifyCourseAccess(userId, userRole, courseId) {
+  // Super admins can access any course
+  if (userRole === ROLES.SUPER_ADMIN) {
+    return;
+  }
 
-    if (courseData?.teacherId !== userId && userRole !== ROLES.SUPER_ADMIN) {
-      throw new Error("Not authorized to access this course");
+  // Teachers can access courses they teach
+  if (userRole === ROLES.TEACHER) {
+    const course = await dynamoDbUtils.getCourseById(courseId);
+    if (course && course.teacherId === userId) {
+      return;
     }
   }
-};
+
+  // Students can access courses they're enrolled in
+  if (userRole === ROLES.STUDENT) {
+    const isEnrolled = await dynamoDbUtils.isStudentEnrolled(courseId, userId);
+    if (isEnrolled) {
+      return;
+    }
+  }
+
+  // If we got here, user doesn't have access
+  throw new Error("You don't have access to this course");
+}
 
 module.exports.updateCourseTeacher = async (event) => {
   try {
@@ -1013,10 +1037,12 @@ module.exports.endTeacherSession = async (event) => {
 
 module.exports.joinMeeting = async (event) => {
   try {
+    const { courseId } = event.pathParameters;
     const userData = await authenticate(event);
-    // const { courseId } = event.pathParameters;
-    const { courseId } = JSON.parse(event.body);
 
+    if (!courseId) {
+      return errorResponse("CourseId is required", 400);
+    }
     // Get active meeting for this course
     const latestMeeting = await dynamoDbUtils.getLatestMeetingForCourse(
       courseId
@@ -1027,12 +1053,6 @@ module.exports.joinMeeting = async (event) => {
     }
 
     const meetingId = latestMeeting.meetingId;
-    // Get meeting details
-    // const meeting = await dynamoDbUtils.getMeetingById(meetingId);
-
-    // if (!meeting) {
-    //   return errorResponse("Meeting not found", 404);
-    // }
 
     const userRole = userData["custom:role"];
     // Verify course access

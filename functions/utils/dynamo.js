@@ -147,6 +147,8 @@ const isStudentEnrolled = async (courseId, userId) => {
     }),
   });
 
+
+  console.log({enrollment:unmarshall(enrollment.Item)});
   return !!enrollment.Item;
 };
 

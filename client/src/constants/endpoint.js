@@ -1,8 +1,7 @@
 // Use the proxy in development, and the actual API URL in production
 export const API_BASE_URL = import.meta.env.DEV
   ? "/api"
-  : import.meta.env.VITE_API_BASE_URL ||
-    "https://v0z6x8yxsl.execute-api.us-east-1.amazonaws.com/dev";
+  : import.meta.env.VITE_API_BASE_URL;
 
 export const ENDPOINTS = {
   meetings: {

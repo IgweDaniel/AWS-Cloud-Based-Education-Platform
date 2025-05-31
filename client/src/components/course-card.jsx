@@ -1,8 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { authenticatedFetch } from "../lib/fetch";
-import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../constants";
+import { getRouteWithParams, ROLES, ROUTES } from "../constants";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,15 +53,6 @@ const ClassCard = ({ classItem, userRole }) => {
   const handleJoinMeeting = async () => {
     setLoading(true);
     try {
-      const response = await authenticatedFetch(
-        ENDPOINTS.courses.join(classItem.courseId),
-        {
-          method: "GET",
-        }
-      );
-      const data = await response.json();
-      console.log({ data });
-
       navigate(
         getRouteWithParams(ROUTES.MEET, {
           courseId: classItem.courseId,

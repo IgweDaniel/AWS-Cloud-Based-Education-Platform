@@ -8,7 +8,7 @@ The Cloud-Based Education Platform (CBEP) is a robust virtual classroom solution
 
 - **Live Video Classes**: Real-time video conferencing with audio and video controls.
 - **Role-Based Access**: Tailored interfaces and permissions for administrators, teachers, and students.
-- **Class Management**: Create, view, edit, and delete classes.
+- **Class Management**: Create, view, edit, and delete courses.
 - **User Management**: Manage users with distinct roles.
 - **Student Enrollment**: Enroll and remove students from classes.
 - **Dashboard Views**: Customized dashboards for each user role.
