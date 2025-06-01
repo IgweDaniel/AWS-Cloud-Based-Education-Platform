@@ -17,6 +17,13 @@ export const AdminCoursesList = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const handleCourseDelete = (courseId) => {
+    // Remove the deleted course from the state
+    setClasses((prevClasses) =>
+      prevClasses.filter((course) => course.courseId !== courseId)
+    );
+  };
+
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -68,6 +75,7 @@ export const AdminCoursesList = () => {
               key={classItem.courseId}
               classItem={classItem}
               userRole={user.role}
+              onCourseDelete={handleCourseDelete}
             />
           ))}
         </div>

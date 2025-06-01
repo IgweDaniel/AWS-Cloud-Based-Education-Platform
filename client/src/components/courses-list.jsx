@@ -54,6 +54,14 @@ export const CourseList = () => {
     activeClasses: 0,
   });
 
+  // Handle course deletion
+  const handleCourseDelete = (courseId) => {
+    // Remove the deleted course from the state
+    setClasses((prevClasses) =>
+      prevClasses.filter((course) => course.courseId !== courseId)
+    );
+  };
+
   // Sorting options
   const sortOptions = [
     { value: "recent", label: "Most Recent" },
@@ -357,6 +365,7 @@ export const CourseList = () => {
                     key={classItem.classId}
                     classItem={classItem}
                     userRole={user?.role}
+                    onCourseDelete={handleCourseDelete}
                   />
                 ))}
               </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS, ROLES, ROUTES } from "@/constants";
 
@@ -30,7 +31,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BookOpen, BookOpenCheck, Info } from "lucide-react";
 import { ClipLoader } from "react-spinners";
 
@@ -47,8 +47,6 @@ export const CreateCourse = () => {
   const navigate = useNavigate();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -81,7 +79,6 @@ export const CreateCourse = () => {
   const handleSubmit = async (data) => {
     try {
       setLoading(true);
-      setError("");
 
       const response = await authenticatedFetch(ENDPOINTS.courses.create, {
         method: "POST",
@@ -92,12 +89,12 @@ export const CreateCourse = () => {
         throw new Error("Failed to create class");
       }
 
-      setSuccess(true);
+      toast.success("Course created successfully! Redirecting...");
       setTimeout(() => {
         navigate(ROUTES.COURSES);
       }, 1500);
     } catch (err) {
-      setError(err.message || "An error occurred while creating the class");
+      toast.error(err.message || "An error occurred while creating the class");
     } finally {
       setLoading(false);
     }
@@ -151,19 +148,6 @@ export const CreateCourse = () => {
                   onSubmit={form.handleSubmit(handleSubmit)}
                   className="space-y-6"
                 >
-                  {error && (
-                    <Alert variant="destructive" className="mb-6">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  {success && (
-                    <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
-                      <AlertDescription>
-                        Course created successfully! Redirecting...
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}

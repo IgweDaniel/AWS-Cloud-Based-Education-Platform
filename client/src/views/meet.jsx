@@ -7,6 +7,7 @@ import {
   ConsoleLogger,
   DefaultDeviceController,
   DefaultMeetingSession,
+  DefaultModality,
   LogLevel,
   MeetingSessionConfiguration,
 } from "amazon-chime-sdk-js";
@@ -21,7 +22,8 @@ import {
 import { MdCallEnd } from "react-icons/md";
 
 import { authenticatedFetch } from "../lib/fetch";
-import { ENDPOINTS, ROLES, ROUTES } from "../constants";
+import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../constants";
+import { IoAlertCircleSharp } from "react-icons/io5";
 
 // UI components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,12 +44,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
+import { VideoTile } from "./video-tile";
 
-const logger = new ConsoleLogger("MyLogger", LogLevel.INFO);
+const logger = new ConsoleLogger("MyLogger", LogLevel.ERROR);
 const deviceController = new DefaultDeviceController(logger);
 
-// TODO: listen for meeting ended event and redirect
-// TODO: call the end meeting session if teacher
 const Meet = () => {
   const { courseId } = useParams();
   const [meetingId, setMeetingId] = useState(null);
@@ -59,7 +61,8 @@ const Meet = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [error, setError] = useState(null);
-  const videoGridRef = useRef(null);
+  const [roster, setRoster] = useState(() => new Map());
+  // const videoGridRef = useRef(null);
   const localVideoRef = useRef(null);
   const audioElementRef = useRef(null);
   const [localTileID, setLocalTileID] = useState(null);
@@ -90,6 +93,7 @@ const Meet = () => {
       if (user.role == ROLES.TEACHER) {
         await endMeeting();
       }
+      roster.clear();
       await Promise.all([
         meetingSession?.audioVideo.stopAudioInput(),
         meetingSession?.audioVideo.stopVideoInput(),
@@ -105,7 +109,6 @@ const Meet = () => {
   const joinMeetingHandler = async () => {
     try {
       setIsLoading(true);
-      console.log("joinMeet", ENDPOINTS.courses.join(courseId));
       const response = await authenticatedFetch(
         ENDPOINTS.courses.join(courseId),
         {
@@ -118,11 +121,16 @@ const Meet = () => {
         if (error.statusCode === 404) {
           // Meeting was deleted by Chime
           //TODO: Show a user-friendly message
-          navigate(ROUTES.DASHBOARD, {
-            state: {
-              message: "This meeting has ended or is no longer available",
-            },
-          });
+          navigate(
+            getRouteWithParams(ROUTES.COURSE_DETAIL, {
+              courseId,
+            }),
+            {
+              state: {
+                message: "This meeting has ended or is no longer available",
+              },
+            }
+          );
           return;
         }
         throw new Error(error.message || "Failed to join meeting");
@@ -133,6 +141,7 @@ const Meet = () => {
       await joinMeeting(data.meeting, data.attendee);
     } catch (error) {
       console.error("Error joining meeting:", error);
+      toast.error("Failed to join meeting");
       setError(error.message);
       setIsLoading(false);
     }
@@ -161,6 +170,64 @@ const Meet = () => {
       setIsDeleteMeetingLoading(false);
     }
   };
+
+  function volumeHandler(attendeeId, volume, muted, signalStrength) {
+    const baseAttendeeId = new DefaultModality(attendeeId).base();
+    if (baseAttendeeId !== attendeeId) {
+      // Optional: Do not include the content attendee (attendee-id#content) in the roster.
+      // See the "Screen and content share" section for details.
+      return;
+    }
+
+    if (roster.has(attendeeId)) {
+      // A null value for any field means that it has not changed.
+      roster.get(attendeeId).volume = volume; // a fraction between 0 and 1
+      roster.get(attendeeId).muted = muted; // A boolean
+      roster.get(attendeeId).signalStrength = signalStrength; // 0 (no signal), 0.5 (weak), 1 (strong)
+    } else {
+      // Add an attendee.
+      // Optional: You can fetch more data, such as attendee name,
+      // from your server application and set them here.
+      roster.set(attendeeId, {
+        attendeeId,
+        volume,
+        muted,
+        signalStrength,
+      });
+    }
+    setRoster(new Map(roster));
+  }
+
+  function attendeePrescenceHandler(presentAttendeeId, present) {
+    console.log({ presentAttendeeId, present });
+    if (!present) {
+      roster.delete(presentAttendeeId);
+      console.log({ roster });
+      setRoster(new Map(roster));
+      setVideoTiles((prevTiles) => {
+        const filteredTiles = prevTiles.filter(
+          (tile) => tile.boundAttendeeId != presentAttendeeId
+        );
+
+        return filteredTiles;
+      });
+      meetingSession.audioVideo.realtimeUnsubscribeFromVolumeIndicator(
+        presentAttendeeId,
+        volumeHandler
+      );
+      return;
+    }
+    roster.set(presentAttendeeId, {
+      attendeeId: presentAttendeeId,
+    });
+
+    setRoster(new Map(roster));
+
+    meetingSession.audioVideo.realtimeSubscribeToVolumeIndicator(
+      presentAttendeeId,
+      volumeHandler
+    );
+  }
 
   const joinMeeting = async (meetingResponse, attendeeResponse) => {
     try {
@@ -262,23 +329,11 @@ const Meet = () => {
 
   // Function to toggle audio
   const toggleAudio = async () => {
-    if (meetingSession) {
-      if (isMuted) {
-        // Unmute: Start audio input again
-        if (selectedAudioInput) {
-          await meetingSession.audioVideo.startAudioInput(
-            selectedAudioInput.deviceId
-          );
-        } else if (audioInputDevices.length > 0) {
-          await meetingSession.audioVideo.startAudioInput(
-            audioInputDevices[0].deviceId
-          );
-        }
-      } else {
-        // Mute: Stop audio input
-        await meetingSession.audioVideo.stopAudioInput();
-      }
-      setIsMuted(!isMuted);
+    if (!meetingSession) return;
+    if (isMuted) {
+      meetingSession.audioVideo.realtimeUnmuteLocalAudio();
+    } else {
+      meetingSession.audioVideo.realtimeMuteLocalAudio();
     }
   };
 
@@ -286,9 +341,10 @@ const Meet = () => {
   const toggleVideo = async () => {
     if (meetingSession) {
       if (isVideoOff) {
+        await meetingSession.audioVideo.startVideoInput(selectedVideoInput);
         await meetingSession.audioVideo.startLocalVideoTile();
       } else {
-        await meetingSession.audioVideo.stopLocalVideoTile();
+        await meetingSession.audioVideo.stopVideoInput();
       }
       setIsVideoOff(!isVideoOff);
     }
@@ -329,21 +385,35 @@ const Meet = () => {
           !tileState.isContent &&
           !tileState.localTile
         ) {
+          roster.get(tileState.boundAttendeeId).videoEnabled =
+            tileState.boundVideoStream.active;
+          setRoster(new Map(roster));
+
           setVideoTiles((prevTiles) => {
-            const existingTile = prevTiles.find(
-              (tile) => tile.tileId === tileState.tileId
+            const filteredTiles = prevTiles.filter(
+              (tile) => tile.boundAttendeeId != tileState.boundAttendeeId
             );
-            if (!existingTile) {
-              return [...prevTiles, tileState];
-            }
-            return prevTiles;
+
+            return [...filteredTiles, tileState];
           });
         }
       },
       videoTileWasRemoved: (tileId) => {
-        setVideoTiles((prevTiles) =>
-          prevTiles.filter((tile) => tile.tileId !== tileId)
+        const tileIndex = videoTiles.findIndex(
+          (tile) => tile.tileId === tileId
         );
+        if (tileIndex !== -1) {
+          const removedTile = videoTiles[tileIndex];
+          console.log({
+            videoTilesAttendee: roster.get(removedTile.boundAttendeeId)
+              .attendeeId,
+          });
+
+          // Access roster data for the removed attendee if it exists
+          roster.get(removedTile.boundAttendeeId).videoEnabled = false;
+          setRoster(new Map(roster));
+          return;
+        }
       },
     };
 
@@ -356,7 +426,7 @@ const Meet = () => {
         meetingSession.audioVideo.removeObserver(remoteObserver);
       }
     };
-  }, [meetingSession]);
+  }, [meetingSession, roster, videoTiles]);
 
   useEffect(() => {
     const eventObserver = {
@@ -416,71 +486,123 @@ const Meet = () => {
     }
   }, [meetingSession]);
 
-  // Effect to bind video tiles to HTML video elements
   useEffect(() => {
-    console.log({ videoTiles });
+    const muteUnmutecallback = (localMuted) => {
+      setIsMuted(localMuted);
+    };
+    if (!meetingSession) return;
+    meetingSession.audioVideo.realtimeSubscribeToAttendeeIdPresence(
+      attendeePrescenceHandler
+    );
+    meetingSession.audioVideo?.realtimeSubscribeToMuteAndUnmuteLocalAudio(
+      muteUnmutecallback
+    );
+    setIsMuted(meetingSession.audioVideo?.realtimeIsLocalAudioMuted() || false);
 
-    // console.log({ videoTiles, localTile });
-    if (!videoGridRef.current || !meetingSession) return;
+    return () => {
+      if (meetingSession) {
+        meetingSession.audioVideo.realtimeUnsubscribeToAttendeeIdPresence(
+          attendeePrescenceHandler
+        );
+        meetingSession.audioVideo?.realtimeUnsubscribeToMuteAndUnmuteLocalAudio(
+          muteUnmutecallback
+        );
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meetingSession]);
 
-    // Clear existing content
-    videoGridRef.current.innerHTML = "";
+  // Effect to bind video tiles to HTML video elements
+  // useEffect(() => {
+  //   console.log({ videoTiles });
 
-    // Handle remote video tiles
-    videoTiles.forEach((tile) => {
-      const videoContainer = document.createElement("div");
-      Object.assign(videoContainer.style, {
-        backgroundColor: "#3c4043",
-        borderRadius: "8px",
-        overflow: "hidden",
-        aspectRatio: "16/9",
-      });
+  //   // console.log({ videoTiles, localTile });
+  //   if (!videoGridRef.current || !meetingSession) return;
 
-      const videoElement = document.createElement("video");
-      videoElement.setAttribute("playsinline", true);
-      Object.assign(videoElement.style, {
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        display: "none",
-      });
+  //   // Clear existing content
+  //   videoGridRef.current.innerHTML = "";
 
-      videoContainer.appendChild(videoElement);
-      videoGridRef.current.appendChild(videoContainer);
+  //   // Handle remote video tiles
+  //   videoTiles.forEach((tile) => {
+  //     console.log({ tile });
+  //     const videoContainer = document.createElement("div");
+  //     Object.assign(videoContainer.style, {
+  //       backgroundColor: "#3c4043",
+  //       borderRadius: "8px",
+  //       overflow: "hidden",
+  //       aspectRatio: "16/9",
+  //     });
 
-      videoElement.addEventListener("loadeddata", () => {
-        videoElement.style.display = "block";
-        // setIsLoading(false);
-      });
+  //     const videoElement = document.createElement("video");
+  //     videoElement.setAttribute("playsinline", true);
+  //     Object.assign(videoElement.style, {
+  //       width: "100%",
+  //       height: "100%",
+  //       objectFit: "cover",
+  //       display: "none",
+  //     });
 
-      meetingSession.audioVideo.bindVideoElement(tile.tileId, videoElement);
-    });
+  //     videoContainer.appendChild(videoElement);
+  //     videoGridRef.current.appendChild(videoContainer);
 
-    // Cleanup function
-  }, [videoTiles, meetingSession]);
+  //     videoElement.addEventListener("loadeddata", () => {
+  //       videoElement.style.display = "block";
+  //       // setIsLoading(false);
+  //     });
+
+  //     meetingSession.audioVideo.bindVideoElement(tile.tileId, videoElement);
+  //   });
+
+  //   // Cleanup function
+  // }, [videoTiles, meetingSession]);
 
   // --- UI ---
   if (error) {
     return (
-      <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center">
-        <Card className="bg-destructive text-destructive-foreground border-destructive shadow-lg">
-          <CardHeader>
-            <CardTitle>Error</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">{error}</p>
-            <Button
-              onClick={() => navigate(ROUTES.DASHBOARD)}
-              variant="outline"
-            >
-              Return to Dashboard
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className=" w-full  text-foreground flex items-center justify-center p-4">
+          <Card className="w-full max-w-md border-destructive/50 shadow-lg">
+            <CardHeader className="bg-destructive/5 border-b border-destructive/20">
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <IoAlertCircleSharp />
+                Connection Error
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="mb-6 text-muted-foreground">{error}</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  onClick={() => {
+                    console.log(
+                      getRouteWithParams(ROUTES.COURSE_DETAIL, {
+                        courseId,
+                      })
+                    );
+
+                    navigate(
+                      getRouteWithParams(ROUTES.COURSE_DETAIL, {
+                        courseId,
+                      })
+                    );
+                  }}
+                  className="flex-1"
+                >
+                  View Course
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={joinMeetingHandler}
+                  className="flex-1"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
     );
   }
-
   return (
     <div className="min-h-screen w-full bg-background text-foreground relative overflow-hidden">
       {/* Header */}
@@ -517,11 +639,33 @@ const Meet = () => {
             )}
           </CardHeader>
           <CardContent>
-            <div
+            {/* <div
               ref={videoGridRef}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[40vh]"
+            > */}
+            {/* Render remote video tiles here dynamically */}
+            {/* </div> */}
+            <div
+              className="video-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: "16px",
+                minHeight: "40vh",
+              }}
             >
-              {/* Render remote video tiles here dynamically */}
+              {videoTiles.map((tile) => (
+                <>
+                  {`enabled ${roster.get(tile.boundAttendeeId)?.videoEnabled}`}
+                  <VideoTile
+                    key={tile.tileId}
+                    tileState={tile}
+                    meetingSession={meetingSession}
+                    isVideoOff={!roster.get(tile.boundAttendeeId)?.videoEnabled}
+                    isMuted={roster.get(tile.boundAttendeeId)?.muted ?? false}
+                  />
+                </>
+              ))}
             </div>
             {/* Local video preview */}
             <div className="fixed bottom-32 right-8 w-56 max-w-xs aspect-video rounded-lg overflow-hidden shadow-lg z-20 bg-muted border border-border">
@@ -532,9 +676,27 @@ const Meet = () => {
                 playsInline
                 className="w-full h-full object-cover"
               />
-              <span className="absolute bottom-2 left-2 bg-background/80 text-xs px-2 py-0.5 rounded">
+              {/* <span className="absolute bottom-2 left-2 bg-background/80 text-xs px-2 py-0.5 rounded">
                 You
-              </span>
+              </span> */}
+              <div className="absolute bottom-2 left-2 bg-background/80 text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                <span>You</span>
+                {isMuted && (
+                  <FaMicrophoneSlash className="text-destructive" size={12} />
+                )}
+              </div>
+
+              {/* Video off indicator - fun animation */}
+              {isVideoOff && (
+                <div className="absolute inset-0 bg-card flex items-center justify-center">
+                  <div className="bg-primary rounded-full h-15 w-15 flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold">
+                      {user?.firstName?.[0]}
+                      {user?.lastName?.[0]}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

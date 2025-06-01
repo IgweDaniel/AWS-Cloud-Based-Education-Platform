@@ -12,6 +12,7 @@ const {
   CognitoIdentityProviderClient,
   ListUsersCommand,
   AdminCreateUserCommand,
+  AdminDeleteUserCommand,
   AdminSetUserPasswordCommand,
   AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
@@ -345,6 +346,34 @@ module.exports.createCourse = async (event) => {
   }
 };
 
+module.exports.deleteCourse = async (event) => {
+  try {
+    await verifyRole(event, [ROLES.SUPER_ADMIN]);
+
+    const { courseId } = event.pathParameters;
+
+    if (!courseId) {
+      return errorResponse("Course ID is required", 400);
+    }
+
+    // Check if course exists
+    const course = await dynamoDbUtils.getCourseById(courseId);
+    if (!course) {
+      return errorResponse("Course not found", 404);
+    }
+
+    // Delete the course and all related data
+    await dynamoDbUtils.deleteCourse(courseId);
+
+    return successResponse({
+      message: "Course deleted successfully",
+      courseId,
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
 module.exports.enrollStudent = async (event) => {
   try {
     // Verify super admin role
@@ -562,29 +591,6 @@ module.exports.createUser = async (event) => {
       return errorResponse("Invalid role", 400);
     }
 
-    // Create user in Cognito
-    // const createUserResponse = await cognito.adminCreateUser({
-    //   UserPoolId: USER_POOL_ID,
-    //   Username: email,
-    //   TemporaryPassword: password,
-    //   UserAttributes: [
-    //     { Name: "email", Value: email },
-    //     { Name: "email_verified", Value: "true" },
-    //     { Name: "custom:role", Value: role },
-    //     { Name: "given_name", Value: firstName },
-    //     { Name: "family_name", Value: lastName },
-    //   ],
-    //   MessageAction: "SUPPRESS", // Prevents sending automatic email
-    // });
-
-    // Set permanent password
-    // await cognito.adminSetUserPassword({
-    //   UserPoolId: USER_POOL_ID,
-    //   Username: email,
-    //   Password: password,
-    //   Permanent: true,
-    // });
-
     let command = new AdminCreateUserCommand({
       UserPoolId: USER_POOL_ID,
       Username: email,
@@ -611,6 +617,83 @@ module.exports.createUser = async (event) => {
     return successResponse({
       message: "User created successfully",
       userId: createUserResponse.User.Username,
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
+};
+
+module.exports.deleteUser = async (event) => {
+  try {
+    // Verify super admin role
+    await verifyRole(event, [ROLES.SUPER_ADMIN]);
+
+    const { userId } = JSON.parse(event.body);
+
+    // First get user details to check their role
+    const getUserCommand = new AdminGetUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: userId,
+    });
+
+    const userDetails = await cognito.send(getUserCommand);
+    const userRole = userDetails.UserAttributes.find(
+      (attr) => attr.Name === "custom:role"
+    )?.Value;
+    const userIdFromCognito = userDetails.UserAttributes.find(
+      (attr) => attr.Name === "sub"
+    )?.Value;
+
+    // Handle course cleanup based on user role
+    if (userRole === ROLES.STUDENT) {
+      // Get all courses the student is enrolled in
+      const enrolledCourses = await dynamoDbUtils.getStudentEnrolledCourses(
+        userIdFromCognito
+      );
+
+      // Remove student from all enrolled courses
+      await Promise.all(
+        enrolledCourses.map((course) =>
+          dynamoDbUtils.unenrollStudent(course.courseId, userIdFromCognito)
+        )
+      );
+    } else if (userRole === ROLES.TEACHER) {
+      // Get all courses taught by this teacher
+      const taughtCourses = await dynamoDbUtils.getCoursesByTeacherId(
+        userIdFromCognito
+      );
+
+      // For each course, we need to either:
+      // 1. Set teacherId to null/empty (if we want to keep the course without a teacher)
+      // 2. Or delete the course entirely (if courses can't exist without teachers)
+      // For this implementation, we'll set teacherId to null
+      //  const promises=[]
+      await Promise.all(
+        taughtCourses.map((course) =>
+          dynamoDbUtils.updateCourse(
+            course.courseId,
+            "SET teacherId = :teacherId, teacherName = :teacherName",
+            {
+              ":teacherId": "UNASSIGNED",
+              ":teacherName": "Unassigned",
+            }
+          )
+        )
+      );
+    } else if (userRole == ROLES.SUPER_ADMIN) {
+      return errorResponse("Cannot delete a SUPER_ADMIN user", 403);
+    }
+
+    // Now delete the user from Cognito
+    const deleteCommand = new AdminDeleteUserCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: userId,
+    });
+
+    await cognito.send(deleteCommand);
+
+    return successResponse({
+      message: "User deleted successfully and removed from all courses",
     });
   } catch (error) {
     return errorResponse(error);

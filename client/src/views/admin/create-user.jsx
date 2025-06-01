@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 import {
@@ -20,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserPlus, Shield } from "lucide-react";
 import { ClipLoader } from "react-spinners";
 import { ROLES, ROUTES } from "@/constants";
@@ -35,14 +35,10 @@ const CreateUser = () => {
     role: ROLES.STUDENT,
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setSuccess("");
 
     try {
       const response = await authenticatedFetch(ENDPOINTS.users.create, {
@@ -55,7 +51,7 @@ const CreateUser = () => {
         throw new Error(data.error || "Failed to create user");
       }
 
-      setSuccess(`User created successfully: ${formData.email}`);
+      toast.success(`User created successfully: ${formData.email}`);
       setFormData({
         email: "",
         password: "",
@@ -64,7 +60,7 @@ const CreateUser = () => {
         role: ROLES.STUDENT,
       });
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -99,17 +95,6 @@ const CreateUser = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {error && (
-                <Alert variant="destructive" className="mb-6">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              {success && (
-                <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              )}
-
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">

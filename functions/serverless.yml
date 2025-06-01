@@ -55,6 +55,8 @@ provider:
         - cognito-idp:AdminSetUserPassword
         - cognito-idp:ListUsers
         - cognito-idp:AdminUpdateUserAttributes
+        - cognito-idp:AdminDeleteUser
+
       Resource:
         - arn:aws:cognito-idp:eu-north-1:*:userpool/${self:provider.environment.USER_POOL_ID}
         - arn:aws:cognito-idp:${self:provider.region}:*:userpool/${self:provider.environment.USER_POOL_ID}
@@ -172,6 +174,18 @@ functions:
           method: post
           cors: true
 
+  deleteCourse:
+    handler: handler.deleteCourse
+    events:
+      - http:
+          path: courses/{courseId}
+          method: delete
+          cors: true
+          request:
+            parameters:
+              paths:
+                courseId: true
+
   enrollStudent:
     handler: handler.enrollStudent
     events:
@@ -246,6 +260,14 @@ functions:
       - http:
           path: users
           method: post
+          cors: true
+
+  deleteUser:
+    handler: handler.deleteUser
+    events:
+      - http:
+          path: users
+          method: delete
           cors: true
 
   listUsers:

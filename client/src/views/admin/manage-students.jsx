@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 import {
@@ -18,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserPlus, UserMinus, Users, ArrowLeft } from "lucide-react";
 import { ClipLoader } from "react-spinners";
 import { getRouteWithParams, ROUTES } from "@/constants";
@@ -31,8 +31,6 @@ const ManageStudents = () => {
   const [selectedStudent, setSelectedStudent] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState("");
   const [courseData, setCourseData] = useState(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [unerollingStudentId, setUnerollingStudentId] = useState(null);
@@ -62,7 +60,7 @@ const ManageStudents = () => {
         );
       } catch (error) {
         console.log("Failed to load students:", error);
-        setError("Failed to load students");
+        toast.error("Failed to load students");
       } finally {
         setLoading(false);
       }
@@ -75,7 +73,6 @@ const ManageStudents = () => {
     if (!selectedStudent) return;
 
     setSubmitting(true);
-    setError(null);
     try {
       const response = await authenticatedFetch(
         ENDPOINTS.courses.enroll(courseId),
@@ -96,13 +93,10 @@ const ManageStudents = () => {
         availableStudents.filter((s) => s.username !== selectedStudent)
       );
       setSelectedStudent("");
-      setSuccess("Student successfully enrolled");
-
-      // Clear success message after timeout
-      setTimeout(() => setSuccess(""), 3000);
+      toast.success("Student successfully enrolled");
     } catch (error) {
       console.error("Failed to enroll student:", error);
-      setError("Failed to enroll student");
+      toast.error("Failed to enroll student");
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +104,6 @@ const ManageStudents = () => {
 
   const handleRemove = async (studentId) => {
     setIsRemoving(true);
-    setError(null);
     setUnerollingStudentId(studentId);
     try {
       const response = await authenticatedFetch(
@@ -137,13 +130,10 @@ const ManageStudents = () => {
         setAvailableStudents([...availableStudents, removedStudent]);
       }
 
-      setSuccess("Student successfully removed");
-
-      // Clear success message after timeout
-      setTimeout(() => setSuccess(""), 3000);
+      toast.success("Student successfully removed");
     } catch (error) {
       console.error("Failed to remove student:", error);
-      setError("Failed to remove student");
+      toast.error("Failed to remove student");
     } finally {
       setIsRemoving(false);
       setUnerollingStudentId(null);
@@ -172,18 +162,6 @@ const ManageStudents = () => {
           {courseData?.courseId ? `(ID: ${courseData.courseId})` : ""}
         </p>
       </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert className="bg-green-50 text-green-800 border-green-200">
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Enroll Students */}

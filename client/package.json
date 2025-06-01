@@ -33,6 +33,7 @@
     "react-icons": "^5.4.0",
     "react-router-dom": "^7.6.0",
     "react-spinners": "^0.15.0",
+    "sonner": "^2.0.4",
     "styled-components": "^6.1.14",
     "styled-system": "^5.1.5",
     "tailwind-merge": "^3.0.2",

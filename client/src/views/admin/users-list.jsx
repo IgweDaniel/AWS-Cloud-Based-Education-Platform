@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authenticatedFetch } from "../../lib/fetch";
-import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../../constants";
+import { ENDPOINTS, ROLES, ROUTES } from "../../constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ClipLoader } from "react-spinners";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 const ALL_FILTER = "all";
 
@@ -29,6 +32,9 @@ const UsersList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [roleFilter, setRoleFilter] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -52,6 +58,41 @@ const UsersList = () => {
 
     fetchUsers();
   }, [roleFilter]);
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setDeletingUser(true);
+    try {
+      const response = await authenticatedFetch(ENDPOINTS.users.delete, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: userToDelete.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete user");
+      }
+
+      // Remove user from the list
+      setUsers(users.filter((user) => user.id !== userToDelete.id));
+      toast.success("User deleted successfully");
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      toast.error("Failed to delete user");
+    } finally {
+      setDeletingUser(false);
+    }
+  };
+
+  const openDeleteDialog = (user) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
 
   if (loading)
     return (
@@ -107,21 +148,30 @@ const UsersList = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    navigate(
-                      getRouteWithParams(ROUTES.ADMIN_EDIT_USER, {
-                        userId: user.id,
-                      })
-                    )
-                  }
+                  onClick={() => openDeleteDialog(user)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
-                  Edit
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
                 </Button>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete User"
+        description={`Are you sure you want to delete ${userToDelete?.firstName} ${userToDelete?.lastName}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        loading={deletingUser}
+        onConfirm={handleDeleteUser}
+        icon={Trash2}
+      />
     </div>
   );
 };

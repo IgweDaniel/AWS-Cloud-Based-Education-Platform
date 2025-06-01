@@ -306,8 +306,8 @@ const Layout = () => {
               <div className="flex items-center gap-2">
                 <GraduationCap className="h-6 w-6" />
                 <div>
-                  <h2 className="text-lg font-medium">CBEP University</h2>
-                  <p className="text-xs opacity-80">
+                  {/* <h2 className="text-lg font-medium">CBEP University</h2> */}
+                  <p className="text-lg opacity-80">
                     {getPortalName(user?.role)}
                   </p>
                 </div>
@@ -344,8 +344,8 @@ const Layout = () => {
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
             <GraduationCap className="h-6 w-6" />
             <div>
-              <h2 className="text-lg font-medium">CBEP University</h2>
-              <p className="text-xs opacity-80">{getPortalName(user?.role)}</p>
+              {/* <h2 className="text-lg font-medium">CBEP University</h2> */}
+              <p className="text-lg opacity-80">{getPortalName(user?.role)}</p>
             </div>
           </Link>
         </div>

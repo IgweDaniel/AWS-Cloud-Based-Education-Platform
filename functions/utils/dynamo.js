@@ -147,8 +147,7 @@ const isStudentEnrolled = async (courseId, userId) => {
     }),
   });
 
-
-  console.log({enrollment:unmarshall(enrollment.Item)});
+  console.log({ enrollment: unmarshall(enrollment.Item) });
   return !!enrollment.Item;
 };
 
@@ -496,7 +495,7 @@ const getResourceById = async (courseId, resourceId) => {
  * Delete a resource
  * @param {string} courseId - The ID of the course
  * @param {string} resourceId - The ID of the resource
- * @returns {Promise<boolean>} - True if successful, false otherwise
+ * @returns {Promise<boolean>}
  */
 const deleteResource = async (courseId, resourceId) => {
   await dynamoDB.deleteItem({
@@ -506,6 +505,57 @@ const deleteResource = async (courseId, resourceId) => {
       resourceId,
     }),
   });
+
+  return true;
+};
+
+/**
+ * Delete a course and all related data
+ * @param {string} courseId - The ID of the course to delete
+ * @returns {Promise<boolean>}
+ */
+const deleteCourse = async (courseId) => {
+  // Delete the course
+  await dynamoDB.deleteItem({
+    TableName: "Courses",
+    Key: marshall({ courseId }),
+  });
+
+  // Delete all enrollments for this course
+  const enrollments = await getCourseEnrollments(courseId);
+  for (const enrollment of enrollments) {
+    await dynamoDB.deleteItem({
+      TableName: "Enrollments",
+      Key: marshall({
+        courseId,
+        userId: enrollment.userId,
+      }),
+    });
+  }
+
+  // Delete all resources for this course
+  const resources = await getCourseResources(courseId);
+  for (const resource of resources) {
+    await dynamoDB.deleteItem({
+      TableName: "Resources",
+      Key: marshall({
+        courseId,
+        resourceId: resource.resourceId,
+      }),
+    });
+  }
+
+  // Delete all meetings for this course
+  const meetings = await queryMeetings(courseId);
+  for (const meeting of meetings) {
+    await dynamoDB.deleteItem({
+      TableName: "Meetings",
+      Key: marshall({
+        courseId,
+        meetingId: meeting.meetingId,
+      }),
+    });
+  }
 
   return true;
 };
@@ -537,4 +587,5 @@ module.exports = {
   addCourseResource,
   getResourceById,
   deleteResource,
+  deleteCourse,
 };

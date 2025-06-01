@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { authenticatedFetch } from "../../lib/fetch";
 import { ENDPOINTS } from "../../constants/endpoint";
 
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserCheck, School } from "lucide-react";
 import { ClipLoader } from "react-spinners";
 import { ROUTES } from "@/constants";
@@ -31,8 +31,6 @@ const AssignTeacher = () => {
   const [selectedCourse, setSelectedCourse] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,7 +48,7 @@ const AssignTeacher = () => {
         setCourses(classesData);
       } catch (error) {
         console.log("Failed to load data:", error);
-        setError("Failed to load data");
+        toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -62,7 +60,6 @@ const AssignTeacher = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError("");
 
     try {
       const response = await authenticatedFetch(
@@ -77,13 +74,13 @@ const AssignTeacher = () => {
         throw new Error("Failed to assign teacher");
       }
 
-      setSuccess("Teacher successfully assigned to the course");
+      toast.success("Teacher successfully assigned to the course");
       setTimeout(() => {
         navigate(ROUTES.COURSES);
       }, 1500);
     } catch (error) {
       console.log("Failed to assign teacher:", error);
-      setError("Failed to assign teacher");
+      toast.error("Failed to assign teacher");
     } finally {
       setSubmitting(false);
     }
@@ -122,17 +119,6 @@ const AssignTeacher = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {error && (
-                  <Alert variant="destructive" className="mb-6">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                {success && (
-                  <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
-                    <AlertDescription>{success}</AlertDescription>
-                  </Alert>
-                )}
-
                 <form className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Select Course</label>

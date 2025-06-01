@@ -12,6 +12,7 @@ export const ENDPOINTS = {
   courses: {
     list: `${API_BASE_URL}/courses`,
     create: `${API_BASE_URL}/courses`,
+    delete: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
     details: (courseId) => `${API_BASE_URL}/courses/${courseId}`,
     enroll: (courseId) => `${API_BASE_URL}/courses/${courseId}/enroll`,
     removeStudent: (courseId) => `${API_BASE_URL}/courses/${courseId}/student`,
@@ -39,6 +40,7 @@ export const ENDPOINTS = {
   users: {
     list: `${API_BASE_URL}/users`,
     create: `${API_BASE_URL}/users`,
+    delete: `${API_BASE_URL}/users`,
     assignRole: `${API_BASE_URL}/users/role`,
   },
   academic: {

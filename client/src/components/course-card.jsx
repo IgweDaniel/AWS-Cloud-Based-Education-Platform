@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRouteWithParams, ROLES, ROUTES } from "../constants";
+import { toast } from "sonner";
+import { getRouteWithParams, ROLES, ROUTES, ENDPOINTS } from "../constants";
+import { authenticatedFetch } from "../lib/fetch";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +20,9 @@ import {
   GraduationCap,
   Video,
   CalendarCheck,
+  Trash2,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ClipLoader } from "react-spinners";
 
 // Define department & schedule data based on classItem
@@ -42,9 +46,11 @@ const scheduleMap = {
   "Financial Accounting": "Tue/Thu 4:00-5:30 PM",
 };
 
-const ClassCard = ({ classItem, userRole }) => {
+const ClassCard = ({ classItem, userRole, onCourseDelete }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Get department & schedule or use defaults
   const department = departmentMap[classItem.courseName] || "General Studies";
@@ -73,6 +79,34 @@ const ClassCard = ({ classItem, userRole }) => {
     );
   };
 
+  const handleDeleteCourse = async () => {
+    setDeleteLoading(true);
+    try {
+      const response = await authenticatedFetch(
+        ENDPOINTS.courses.delete(classItem.courseId),
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        setDeleteDialogOpen(false);
+        toast.success("Course deleted successfully");
+        if (onCourseDelete) {
+          onCourseDelete(classItem.courseId);
+        }
+      } else {
+        console.error("Failed to delete course");
+        toast.error("Failed to delete course. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      toast.error("Error deleting course. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   // Generate a color seed based on the department name for consistent department coloring
   const getColorForDepartment = (dept) => {
     const colorMap = {
@@ -91,7 +125,7 @@ const ClassCard = ({ classItem, userRole }) => {
 
   return (
     <Card
-      className="overflow-hidden hover:shadow-md transition-shadow border-t-4"
+      className="overflow-hidden hover:shadow-md transition-shadow border-t-4 relative"
       style={{ borderTopColor: "var(--primary)" }}
     >
       <CardHeader className="pb-2">
@@ -143,7 +177,7 @@ const ClassCard = ({ classItem, userRole }) => {
       </CardContent>
 
       {/* {JSON.stringify(classItem, null, 2)} */}
-      <CardFooter className="flex gap-2 pt-4 border-t mt-2">
+      <CardFooter className="flex flex-col gap-2 pt-4 border-t mt-2">
         {classItem.activeMeetingId && (
           <Button
             onClick={handleJoinMeeting}
@@ -179,11 +213,39 @@ const ClassCard = ({ classItem, userRole }) => {
         <Button
           variant={classItem.activeMeetingId ? "outline" : "default"}
           onClick={handleViewDetails}
-          className={classItem.activeMeetingId ? "w-1/3" : "w-full"}
+          className={"w-full"}
         >
           <CalendarCheck className="h-4 w-4 mr-2" />
           {classItem.activeMeetingId ? "Details" : "View Course"}
         </Button>
+
+        {/* Delete button for SUPER_ADMIN users */}
+        {userRole === ROLES.SUPER_ADMIN && (
+          <>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="">Delete Course</span>
+            </Button>
+
+            <ConfirmDialog
+              open={deleteDialogOpen}
+              onOpenChange={setDeleteDialogOpen}
+              title="Delete Course"
+              description={`Are you sure you want to delete "${classItem.courseName}"? This action cannot be undone and will remove all course data, enrollments, and resources.`}
+              confirmText="Delete Course"
+              cancelText="Cancel"
+              onConfirm={handleDeleteCourse}
+              loading={deleteLoading}
+              variant="destructive"
+              icon={Trash2}
+            />
+          </>
+        )}
       </CardFooter>
     </Card>
   );

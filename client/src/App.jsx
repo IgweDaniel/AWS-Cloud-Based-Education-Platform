@@ -29,60 +29,64 @@ import StartSession from "@/views/start-session";
 import SessionsList from "./views/sessions-list";
 import { ROLES } from "./constants";
 import Meet from "./views/meet";
+import { Toaster } from "sonner";
 
 Amplify.configure(awsconfig);
 
 const App = () => {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <>
+      <Toaster position="top-right" />
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route path="/*" element={<PrivateRoute />}>
-            <Route element={<Layout title={"shalom"} />}>
-              <Route index element={<Dashboard />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="courses" element={<Courses />} />
+            <Route path="/*" element={<PrivateRoute />}>
+              <Route element={<Layout title={"shalom"} />}>
+                <Route index element={<Dashboard />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="courses" element={<Courses />} />
 
-              <Route path="sessions" element={<SessionsList />} />
-              <Route path="courses/:courseId" element={<CourseDetail />} />
-              <Route
-                path="courses/:courseId/start"
-                element={<StartSession />}
-              />
-              <Route path="courses/:courseId/meeting" element={<Meet />} />
-
-              {/* Catch-all route */}
-              <Route
-                element={<PrivateRoute allowedRoles={[ROLES.TEACHER]} />}
-              ></Route>
-              <Route
-                element={
-                  <PrivateRoute
-                    allowedRoles={[ROLES.TEACHER, ROLES.SUPER_ADMIN]}
-                  />
-                }
-              ></Route>
-              <Route
-                element={<PrivateRoute allowedRoles={[ROLES.SUPER_ADMIN]} />}
-              >
-                <Route path="users" element={<UsersList />} />
-                <Route path="create-user" element={<CreateUser />} />
-                <Route path="create-course" element={<CreateCourse />} />
-                <Route path="assign-teacher" element={<AssignTeacher />} />
+                <Route path="sessions" element={<SessionsList />} />
+                <Route path="courses/:courseId" element={<CourseDetail />} />
                 <Route
-                  path="courses/:courseId/manage-students"
-                  element={<ManageStudents />}
+                  path="courses/:courseId/start"
+                  element={<StartSession />}
                 />
-              </Route>
+                <Route path="courses/:courseId/meeting" element={<Meet />} />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
+                {/* Catch-all route */}
+                <Route
+                  element={<PrivateRoute allowedRoles={[ROLES.TEACHER]} />}
+                ></Route>
+                <Route
+                  element={
+                    <PrivateRoute
+                      allowedRoles={[ROLES.TEACHER, ROLES.SUPER_ADMIN]}
+                    />
+                  }
+                ></Route>
+                <Route
+                  element={<PrivateRoute allowedRoles={[ROLES.SUPER_ADMIN]} />}
+                >
+                  <Route path="users" element={<UsersList />} />
+                  <Route path="create-user" element={<CreateUser />} />
+                  <Route path="create-course" element={<CreateCourse />} />
+                  <Route path="assign-teacher" element={<AssignTeacher />} />
+                  <Route
+                    path="courses/:courseId/manage-students"
+                    element={<ManageStudents />}
+                  />
+                </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </AuthProvider>
-    </Router>
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </>
   );
 };
 

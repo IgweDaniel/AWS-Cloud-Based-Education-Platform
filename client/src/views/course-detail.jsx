@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { authenticatedFetch } from "../lib/fetch";
 import { useAuth } from "../context/auth";
 import { ENDPOINTS, getRouteWithParams, ROLES, ROUTES } from "../constants";
@@ -29,7 +30,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const getResourceUrl = (resource) => {
   // If it's an external URL (contains http:// or https://)
@@ -57,8 +57,6 @@ const CourseDetail = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resourcesLoading, setResourcesLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [resourceError, setResourceError] = useState(null);
   const [isAddResourceDialogOpen, setIsAddResourceDialogOpen] = useState(false);
   const [newResource, setNewResource] = useState({
     title: "",
@@ -67,9 +65,9 @@ const CourseDetail = () => {
   });
   const [uploadFile, setUploadFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [resourceAddError, setResourceAddError] = useState(null);
-  const [resourceSuccess, setResourceSuccess] = useState(null);
   const [deletingResourceId, setDeletingResourceId] = useState(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeletingCourse, setIsDeletingCourse] = useState(false);
 
   const startMeeting = async () => {
     try {
@@ -104,7 +102,7 @@ const CourseDetail = () => {
         setClassData(data);
       } catch (err) {
         console.error("Error:", err);
-        setError(err.message);
+        toast.error(err.message);
       } finally {
         setLoading(false);
       }
@@ -128,7 +126,7 @@ const CourseDetail = () => {
         setResources(data);
       } catch (err) {
         console.error("Error fetching resources:", err);
-        setResourceError(err.message);
+        toast.error(err.message);
       } finally {
         setResourcesLoading(false);
       }
@@ -188,7 +186,6 @@ const CourseDetail = () => {
     e.preventDefault();
 
     setIsUploading(true);
-    setResourceAddError(null);
 
     try {
       let resourceData = { ...newResource };
@@ -259,13 +256,10 @@ const CourseDetail = () => {
       setNewResource({ title: "", description: "", url: "" });
       setUploadFile(null);
       setIsAddResourceDialogOpen(false);
-      setResourceSuccess("Resource added successfully");
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setResourceSuccess(null), 3000);
+      toast.success("Resource added successfully");
     } catch (err) {
       console.error("Error adding resource:", err);
-      setResourceAddError(err.message);
+      toast.error(err.message);
     } finally {
       setIsUploading(false);
     }
@@ -290,18 +284,38 @@ const CourseDetail = () => {
       setResources(
         resources.filter((resource) => resource.resourceId !== resourceId)
       );
-      setResourceSuccess("Resource deleted successfully");
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setResourceSuccess(null), 3000);
+      toast.success("Resource deleted successfully");
     } catch (err) {
       console.error("Error deleting resource:", err);
-      setResourceError(err.message);
-
-      // Clear error after 3 seconds
-      setTimeout(() => setResourceError(null), 3000);
+      toast.error(err.message);
     } finally {
       setDeletingResourceId(null);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    setIsDeletingCourse(true);
+
+    try {
+      const response = await authenticatedFetch(
+        ENDPOINTS.courses.delete(courseId),
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete course");
+      }
+
+      // Navigate back to courses list after successful deletion
+      navigate(ROUTES.COURSES);
+    } catch (err) {
+      console.error("Error deleting course:", err);
+      toast.error(err.message);
+    } finally {
+      setIsDeletingCourse(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -332,11 +346,13 @@ const CourseDetail = () => {
     );
   }
 
-  if (error) {
+  if (!classData) {
     return (
       <div className="min-h-screen bg-background text-foreground p-8 flex flex-col items-center justify-center">
-        <div className="text-destructive text-xl mb-4">Error</div>
-        <div className="text-foreground">{error}</div>
+        <div className="text-destructive text-xl mb-4">Course not found</div>
+        <div className="text-foreground">
+          The requested course could not be loaded.
+        </div>
       </div>
     );
   }
@@ -411,6 +427,16 @@ const CourseDetail = () => {
                 size="sm"
               >
                 <Video className="mr-2 h-4 w-4" /> Join Live Session
+              </Button>
+            )}
+
+            {user.role === ROLES.SUPER_ADMIN && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setIsDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -597,18 +623,6 @@ const CourseDetail = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {resourceSuccess && (
-                <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
-                  <AlertDescription>{resourceSuccess}</AlertDescription>
-                </Alert>
-              )}
-
-              {resourceError && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertDescription>{resourceError}</AlertDescription>
-                </Alert>
-              )}
-
               {resourcesLoading ? (
                 <div className="flex justify-center py-8">
                   <ClipLoader size={30} color="#0f4c81" />
@@ -703,12 +717,6 @@ const CourseDetail = () => {
           </DialogHeader>
 
           <form onSubmit={handleAddResource} className="space-y-4">
-            {resourceAddError && (
-              <Alert variant="destructive">
-                <AlertDescription>{resourceAddError}</AlertDescription>
-              </Alert>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -813,6 +821,58 @@ const CourseDetail = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Course Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Course</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Are you sure you want to delete &ldquo;
+              <strong>{classData?.courseName}</strong>&rdquo;?
+            </p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+              <p className="text-sm text-destructive-foreground font-medium mb-1">
+                ⚠️ This action cannot be undone.
+              </p>
+              <p className="text-xs text-destructive-foreground/80">
+                This will permanently delete the course, all its resources,
+                enrolled students, and meeting records.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeletingCourse}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteCourse}
+              disabled={isDeletingCourse}
+            >
+              {isDeletingCourse ? (
+                <>
+                  <ClipLoader size={16} color="#fff" className="mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Course
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
