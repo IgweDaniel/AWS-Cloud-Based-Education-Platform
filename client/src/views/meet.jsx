@@ -656,7 +656,6 @@ const Meet = () => {
             >
               {videoTiles.map((tile) => (
                 <>
-                  {`enabled ${roster.get(tile.boundAttendeeId)?.videoEnabled}`}
                   <VideoTile
                     key={tile.tileId}
                     tileState={tile}

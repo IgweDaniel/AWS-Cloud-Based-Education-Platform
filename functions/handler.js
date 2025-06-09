@@ -847,7 +847,6 @@ module.exports.getCourseMetadata = async (event) => {
       )
     ).length;
 
-    // TODO: why is this in courseMetadata, shouln't it being in school metadata
     // Count active meetings
     const meetings = await dynamoDbUtils.getAllMeetings();
 
